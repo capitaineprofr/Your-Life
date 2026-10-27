@@ -464,13 +464,14 @@ export class IsometricEngine {
     ctx.translate(this.offsetX, this.offsetY);
     ctx.scale(this.scale, this.scale);
 
-    // 1. Dessiner le décor de l'appartement (Fond Isométrique Pixel Art)
+    // 1. Fond unifié assorti au décor (#ebebeb)
+    ctx.fillStyle = '#ebebeb';
+    ctx.fillRect(-this.offsetX / this.scale, -this.offsetY / this.scale, canvas.width / this.scale, canvas.height / this.scale);
+
+    // 2. Dessiner le décor de l'appartement (Fond Isométrique Pixel Art)
     if (this.isDecorLoaded) {
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(this.decorImage, 0, 0, this.V_WIDTH, this.V_HEIGHT);
-    } else {
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(0, 0, this.V_WIDTH, this.V_HEIGHT);
     }
 
     // 2. Dessiner le marqueur de clic au sol

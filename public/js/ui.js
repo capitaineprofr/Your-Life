@@ -1,10 +1,10 @@
-// --- Gestion de l'Interface Utilisateur (UI, Auth & HUD) ---
+// --- Gestionnaire d'Interface Utilisateur Modulaire (Style Les Sims) ---
 
 export class UIManager {
   constructor(handlers = {}) {
     this.handlers = handlers;
 
-    // Éléments du DOM
+    // Éléments Auth
     this.authOverlay = document.getElementById('auth-modal-overlay');
     this.tabLogin = document.getElementById('tab-login');
     this.tabRegister = document.getElementById('tab-register');
@@ -13,24 +13,41 @@ export class UIManager {
     this.loginError = document.getElementById('login-error');
     this.regError = document.getElementById('reg-error');
 
-    this.hudTop = document.getElementById('game-hud-top');
-    this.hudBottom = document.getElementById('game-hud-bottom');
+    // Racine HUD & Outils de visibilité
+    this.hudRoot = document.getElementById('hud-root');
+    this.btnToggleUi = document.getElementById('btn-toggle-ui');
+    this.btnShowUi = document.getElementById('btn-show-ui');
+
+    // Profil Joueur (Sims Profile)
     this.hudUsername = document.getElementById('hud-username');
     this.playerFcfa = document.getElementById('player-fcfa');
     this.onlineCounter = document.getElementById('online-counter');
     this.hudAvatarPreview = document.getElementById('hud-avatar-preview');
+    this.btnLogout = document.getElementById('btn-logout');
+    this.simsStatus = document.getElementById('sims-status');
 
+    // Widget Chat
+    this.chatWidget = document.getElementById('hud-chat-widget');
+    this.btnToggleChat = document.getElementById('btn-toggle-chat');
+    this.btnCloseChat = document.getElementById('btn-close-chat');
     this.chatForm = document.getElementById('chat-form');
     this.chatInput = document.getElementById('chat-input');
     this.chatLog = document.getElementById('chat-messages-log');
-    this.toastContainer = document.getElementById('toast-container');
-    this.btnLogout = document.getElementById('btn-logout');
+    this.chatUnreadBadge = document.getElementById('chat-unread-badge');
+    this.unreadCount = 0;
 
-    // Canvas Aperçu en direct de l'Avatar
+    // Panneau Actions
+    this.btnToggleActions = document.getElementById('btn-toggle-actions');
+    this.actionsDrawer = document.getElementById('actions-drawer');
+
+    // Toasts
+    this.toastContainer = document.getElementById('toast-container');
+
+    // Aperçu dynamique
     this.avatarLiveCanvas = document.getElementById('avatar-live-preview');
     this.avatarLiveCtx = this.avatarLiveCanvas ? this.avatarLiveCanvas.getContext('2d') : null;
 
-    // État temporaire du créateur d'avatar
+    // Configuration par défaut
     this.avatarConfig = {
       skin: '#8d5524',
       hairStyle: 'afro',
@@ -45,6 +62,52 @@ export class UIManager {
   }
 
   bindEvents() {
+    // 1. Masquage / Affichage global de l'interface
+    if (this.btnToggleUi) {
+      this.btnToggleUi.addEventListener('click', () => this.toggleAllUI());
+    }
+    if (this.btnShowUi) {
+      this.btnShowUi.addEventListener('click', () => this.toggleAllUI());
+    }
+
+    // Raccourci clavier 'H' pour masquer/afficher l'UI, 'Escape' pour fermer les popups
+    window.addEventListener('keydown', (e) => {
+      // Ignorer si on est en train de taper dans un champ texte
+      const isInputActive = ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
+
+      if ((e.key === 'h' || e.key === 'H') && !isInputActive) {
+        this.toggleAllUI();
+      } else if (e.key === 'Escape') {
+        if (!this.chatWidget.classList.contains('collapsed')) {
+          this.closeChat();
+        }
+        if (isInputActive) {
+          document.activeElement.blur();
+        }
+      } else if (e.key === 'Enter' && !isInputActive && !this.authOverlay.classList.contains('hidden')) {
+        // Rien sur auth
+      } else if (e.key === 'Enter' && !isInputActive && this.authOverlay.classList.contains('hidden')) {
+        this.openChat();
+        e.preventDefault();
+      }
+    });
+
+    // 2. Gestion du Chat Rétractable
+    if (this.btnToggleChat) {
+      this.btnToggleChat.addEventListener('click', () => this.toggleChat());
+    }
+    if (this.btnCloseChat) {
+      this.btnCloseChat.addEventListener('click', () => this.closeChat());
+    }
+
+    // 3. Gestion du Panneau d'Actions
+    if (this.btnToggleActions) {
+      this.btnToggleActions.addEventListener('click', () => {
+        const isCollapsed = this.actionsDrawer.classList.toggle('collapsed');
+        this.btnToggleActions.classList.toggle('active', !isCollapsed);
+      });
+    }
+
     // Onglets Auth
     this.tabLogin.addEventListener('click', () => this.switchTab('login'));
     this.tabRegister.addEventListener('click', () => this.switchTab('register'));
@@ -116,7 +179,7 @@ export class UIManager {
       if (this.handlers.onLogout) this.handlers.onLogout();
     });
 
-    // Chat
+    // Soumission Chat
     this.chatForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const text = this.chatInput.value.trim();
@@ -126,7 +189,7 @@ export class UIManager {
       }
     });
 
-    // Actions rapides / Émotes
+    // Boutons d'actions
     const actionButtons = document.querySelectorAll('.action-btn');
     actionButtons.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -136,6 +199,33 @@ export class UIManager {
         }
       });
     });
+  }
+
+  toggleAllUI() {
+    const isHidden = this.hudRoot.classList.toggle('ui-hidden');
+    if (this.btnShowUi) {
+      this.btnShowUi.classList.toggle('hidden', !isHidden);
+    }
+  }
+
+  toggleChat() {
+    if (this.chatWidget.classList.contains('collapsed')) {
+      this.openChat();
+    } else {
+      this.closeChat();
+    }
+  }
+
+  openChat() {
+    this.chatWidget.classList.remove('collapsed');
+    this.unreadCount = 0;
+    this.chatUnreadBadge.classList.add('hidden');
+    setTimeout(() => this.chatInput.focus(), 50);
+  }
+
+  closeChat() {
+    this.chatWidget.classList.add('collapsed');
+    this.chatInput.blur();
   }
 
   switchTab(tab) {
@@ -155,14 +245,12 @@ export class UIManager {
 
   showAuthModal() {
     this.authOverlay.classList.remove('hidden');
-    this.hudTop.classList.add('hidden');
-    this.hudBottom.classList.add('hidden');
+    this.hudRoot.classList.add('hidden');
   }
 
   hideAuthModal() {
     this.authOverlay.classList.add('hidden');
-    this.hudTop.classList.remove('hidden');
-    this.hudBottom.classList.remove('hidden');
+    this.hudRoot.classList.remove('hidden');
   }
 
   setLoginError(msg) {
@@ -184,14 +272,20 @@ export class UIManager {
 
   updateFCFA(amount) {
     const formatted = new Intl.NumberFormat('fr-FR').format(amount);
-    this.playerFcfa.textContent = `${formatted} FCFA`;
+    this.playerFcfa.textContent = formatted;
   }
 
   setOnlineCount(count) {
-    this.onlineCounter.textContent = `${count} joueur${count > 1 ? 's' : ''} en ligne`;
+    this.onlineCounter.textContent = `${count} en ligne`;
   }
 
-  showToast(message, duration = 3500) {
+  setStatus(text) {
+    if (this.simsStatus) {
+      this.simsStatus.textContent = text;
+    }
+  }
+
+  showToast(message, duration = 3000) {
     const toast = document.createElement('div');
     toast.className = 'toast';
     toast.textContent = message;
@@ -209,8 +303,14 @@ export class UIManager {
     entry.className = 'chat-entry';
     entry.innerHTML = `<span class="chat-author">${username} :</span><span class="chat-text">${text}</span>`;
     this.chatLog.appendChild(entry);
-    this.chatLog.classList.remove('hidden');
     this.chatLog.scrollTop = this.chatLog.scrollHeight;
+
+    // Si le chat est réduit, incrémenter le badge non lu
+    if (this.chatWidget.classList.contains('collapsed')) {
+      this.unreadCount++;
+      this.chatUnreadBadge.textContent = this.unreadCount;
+      this.chatUnreadBadge.classList.remove('hidden');
+    }
   }
 
   // Rendu de l'aperçu dynamique de l'avatar dans le formulaire
@@ -321,22 +421,22 @@ export class UIManager {
     const hairStyle = avatar.hairStyle || 'afro';
 
     ctx.fillStyle = skin;
-    ctx.fillRect(8, 12, 20, 20);
+    ctx.fillRect(12, 16, 24, 24);
 
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(11, 19, 4, 4);
-    ctx.fillRect(21, 19, 4, 4);
+    ctx.fillRect(16, 24, 5, 5);
+    ctx.fillRect(27, 24, 5, 5);
     ctx.fillStyle = '#0f172a';
-    ctx.fillRect(13, 20, 2, 2);
-    ctx.fillRect(23, 20, 2, 2);
+    ctx.fillRect(18, 26, 3, 3);
+    ctx.fillRect(29, 26, 3, 3);
 
     ctx.fillStyle = hair;
     if (hairStyle === 'afro') {
       ctx.beginPath();
-      ctx.arc(18, 14, 11, 0, Math.PI * 2);
+      ctx.arc(24, 18, 14, 0, Math.PI * 2);
       ctx.fill();
     } else {
-      ctx.fillRect(6, 6, 24, 8);
+      ctx.fillRect(10, 10, 28, 10);
     }
   }
 }

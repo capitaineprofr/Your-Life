@@ -21,56 +21,89 @@
       <div class="marker-dot"></div>
     </div>
 
-    <!-- HUD Supérieur -->
-    <header id="game-hud-top" class="hud-panel hud-top hidden">
-      <div class="hud-left">
-        <div class="room-badge">
+    <!-- HUD Modulaire & Séparé (Style Les Sims) -->
+    <div id="hud-root" class="hud-root">
+
+      <!-- 1. En haut à gauche : Badge de lieu discret -->
+      <div id="hud-room-info" class="floating-widget widget-top-left">
+        <div class="room-pill">
           <span class="badge-flag">BF</span>
-          <div class="room-info">
+          <div class="room-text">
             <span class="room-title">Résidence Ouaga 2000</span>
-            <span class="room-subtitle">Salon & Terrasse Isométrique</span>
+            <span id="online-counter" class="room-online">1 en ligne</span>
           </div>
         </div>
       </div>
 
-      <div class="hud-center">
-        <div class="server-status">
-          <span class="status-indicator"></span>
-          <span id="online-counter" class="status-text">1 joueur en ligne</span>
+      <!-- 2. En haut à droite : Outils et Masquage de l'interface -->
+      <div id="hud-top-tools" class="floating-widget widget-top-right">
+        <button id="btn-toggle-ui" class="btn-tool" title="Masquer l'interface (Touche H)">
+          <span class="tool-icon-eye"></span>
+          <span class="btn-tool-label">Masquer UI [H]</span>
+        </button>
+      </div>
+
+      <!-- 3. En bas à gauche : Fiche Profil Personnage (Style Les Sims) -->
+      <div id="hud-sims-profile" class="floating-widget widget-sims-profile">
+        <div class="sims-portrait-wrapper">
+          <div class="sims-plumbob" title="Humeur Excellente"></div>
+          <canvas id="hud-avatar-preview" width="48" height="48"></canvas>
+        </div>
+        <div class="sims-info">
+          <div class="sims-name-row">
+            <span id="hud-username" class="sims-username">Joueur</span>
+            <button id="btn-logout" class="btn-sims-logout" title="Déconnexion">Quitter</button>
+          </div>
+          <div class="sims-status-tag" id="sims-status">Chez soi • En forme</div>
+          <div class="sims-currency-badge">
+            <span class="currency-tag">FCFA</span>
+            <span id="player-fcfa" class="sims-currency-amount">15 000</span>
+          </div>
         </div>
       </div>
 
-      <div class="hud-right">
-        <div class="currency-card">
-          <span class="currency-label">Solde</span>
-          <span id="player-fcfa" class="currency-amount">15 000 FCFA</span>
-        </div>
-        <div class="user-profile-badge">
-          <canvas id="hud-avatar-preview" width="36" height="36"></canvas>
-          <span id="hud-username" class="username-display">Joueur</span>
-          <button id="btn-logout" class="btn-icon" title="Déconnexion">Quitter</button>
-        </div>
-      </div>
-    </header>
+      <!-- 4. En bas au centre : Widget de Tchat Rétractable -->
+      <div id="hud-chat-widget" class="floating-widget widget-chat collapsed">
+        <button id="btn-toggle-chat" class="chat-launcher-btn">
+          <span class="chat-icon"></span>
+          <span class="chat-launcher-label">Discussion</span>
+          <span id="chat-unread-badge" class="chat-unread hidden">0</span>
+        </button>
 
-    <!-- HUD Inférieur (Chat & Actions) -->
-    <footer id="game-hud-bottom" class="hud-panel hud-bottom hidden">
-      <div class="chat-container">
-        <div id="chat-messages-log" class="chat-log hidden"></div>
-        <form id="chat-form" class="chat-input-bar">
-          <input type="text" id="chat-input" placeholder="Discuter avec les joueurs..." maxlength="100" autocomplete="off">
-          <button type="submit" id="btn-send-chat" class="btn-primary">Envoyer</button>
-        </form>
+        <div class="chat-panel">
+          <div class="chat-header">
+            <span class="chat-title">Tchat de la Résidence</span>
+            <button id="btn-close-chat" class="btn-close-widget" title="Réduire">_</button>
+          </div>
+          <div id="chat-messages-log" class="chat-log"></div>
+          <form id="chat-form" class="chat-input-bar">
+            <input type="text" id="chat-input" placeholder="Écrire un message..." maxlength="100" autocomplete="off">
+            <button type="submit" id="btn-send-chat" class="btn-primary">Envoyer</button>
+          </form>
+        </div>
       </div>
 
-      <div class="quick-actions-bar">
-        <button id="act-wave" class="action-btn" data-action="wave">Saluer</button>
-        <button id="act-dance" class="action-btn" data-action="dance">Danser</button>
-        <button id="act-sit" class="action-btn" data-action="sit">S'asseoir</button>
-        <button id="act-work" class="action-btn action-special" data-action="work">Travailler PC (+FCFA)</button>
-        <button id="act-drink" class="action-btn" data-action="drink">Boire Bissap</button>
+      <!-- 5. En bas à droite : Panneau d'Actions Dépliable -->
+      <div id="hud-actions-menu" class="floating-widget widget-actions">
+        <button id="btn-toggle-actions" class="actions-launcher-btn active">
+          <span class="actions-icon"></span>
+          <span class="actions-launcher-label">Interactions</span>
+        </button>
+        <div id="actions-drawer" class="actions-drawer">
+          <button class="action-btn" data-action="wave">Saluer</button>
+          <button class="action-btn" data-action="dance">Danser</button>
+          <button class="action-btn" data-action="sit">S'asseoir</button>
+          <button class="action-btn action-special" data-action="work">Travailler PC (+FCFA)</button>
+          <button class="action-btn" data-action="drink">Boire Bissap</button>
+        </div>
       </div>
-    </footer>
+
+    </div>
+
+    <!-- Bouton discret de rappel pour réafficher l'UI quand tout est masqué -->
+    <button id="btn-show-ui" class="btn-floating-pill hidden">
+      Afficher l'interface (H)
+    </button>
 
     <!-- Toasts / Notifications -->
     <div id="toast-container" class="toast-container"></div>
