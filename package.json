@@ -1,0 +1,16 @@
+{
+  "name": "your-life",
+  "version": "0.1.0",
+  "description": "Simulateur de vie multijoueur sur navigateur se déroulant au Burkina Faso",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  }
+}

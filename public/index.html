@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your-Life : Simulateur de Vie Ouagadougou (Multijoueur)</title>
+  <meta name="description" content="Simulateur de vie multijoueur en vue isométrique 2.5D se déroulant à Ouagadougou, Burkina Faso.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-container">
+    <!-- Canvas de jeu isométrique -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Marqueur de clic au sol (overlay HTML fluide) -->
+    <div id="click-marker" class="click-marker hidden">
+      <div class="marker-ring"></div>
+      <div class="marker-dot"></div>
+    </div>
+
+    <!-- HUD Supérieur -->
+    <header id="game-hud-top" class="hud-panel hud-top hidden">
+      <div class="hud-left">
+        <div class="room-badge">
+          <span class="badge-flag">BF</span>
+          <div class="room-info">
+            <span class="room-title">Résidence Ouaga 2000</span>
+            <span class="room-subtitle">Salon & Terrasse Isométrique</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hud-center">
+        <div class="server-status">
+          <span class="status-indicator"></span>
+          <span id="online-counter" class="status-text">1 joueur en ligne</span>
+        </div>
+      </div>
+
+      <div class="hud-right">
+        <div class="currency-card">
+          <span class="currency-label">Solde</span>
+          <span id="player-fcfa" class="currency-amount">15 000 FCFA</span>
+        </div>
+        <div class="user-profile-badge">
+          <canvas id="hud-avatar-preview" width="36" height="36"></canvas>
+          <span id="hud-username" class="username-display">Joueur</span>
+          <button id="btn-logout" class="btn-icon" title="Déconnexion">Quitter</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- HUD Inférieur (Chat & Actions) -->
+    <footer id="game-hud-bottom" class="hud-panel hud-bottom hidden">
+      <div class="chat-container">
+        <div id="chat-messages-log" class="chat-log hidden"></div>
+        <form id="chat-form" class="chat-input-bar">
+          <input type="text" id="chat-input" placeholder="Discuter avec les joueurs..." maxlength="100" autocomplete="off">
+          <button type="submit" id="btn-send-chat" class="btn-primary">Envoyer</button>
+        </form>
+      </div>
+
+      <div class="quick-actions-bar">
+        <button id="act-wave" class="action-btn" data-action="wave">Saluer</button>
+        <button id="act-dance" class="action-btn" data-action="dance">Danser</button>
+        <button id="act-sit" class="action-btn" data-action="sit">S'asseoir</button>
+        <button id="act-work" class="action-btn action-special" data-action="work">Travailler PC (+FCFA)</button>
+        <button id="act-drink" class="action-btn" data-action="drink">Boire Bissap</button>
+      </div>
+    </footer>
+
+    <!-- Toasts / Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Modal d'Authentification (Connexion / Inscription) -->
+    <div id="auth-modal-overlay" class="modal-overlay">
+      <div class="modal-card auth-card">
+        <div class="modal-banner">
+          <img src="assets/banner_ouaga.jpg" alt="Ouagadougou Burkina Faso" class="banner-img">
+          <div class="banner-overlay">
+            <span class="game-tag">Simulateur de Vie 2.5D</span>
+            <h1 class="game-logo">YOUR-LIFE</h1>
+            <p class="game-slogan">Édition Ouagadougou • Burkina Faso</p>
+          </div>
+        </div>
+
+        <div class="auth-tabs">
+          <button id="tab-login" class="tab-btn active">Connexion</button>
+          <button id="tab-register" class="tab-btn">Créer un compte</button>
+        </div>
+
+        <!-- Formulaire de Connexion -->
+        <form id="form-login" class="auth-form">
+          <div class="form-group">
+            <label for="login-username">Nom d'utilisateur</label>
+            <input type="text" id="login-username" required placeholder="Votre pseudo" autocomplete="username">
+          </div>
+          <div class="form-group">
+            <label for="login-password">Mot de passe</label>
+            <input type="password" id="login-password" required placeholder="Votre mot de passe" autocomplete="current-password">
+          </div>
+          <div id="login-error" class="form-error hidden"></div>
+          <button type="submit" id="btn-submit-login" class="btn-submit">Entrer dans la résidence</button>
+        </form>
+
+        <!-- Formulaire d'Inscription & Personnalisation Avatar -->
+        <form id="form-register" class="auth-form hidden">
+          <div class="register-columns">
+            <div class="register-fields">
+              <div class="form-group">
+                <label for="reg-username">Nom d'utilisateur</label>
+                <input type="text" id="reg-username" required placeholder="Ex: Jerry, Moussa, Awa..." minlength="3" maxlength="15" autocomplete="username">
+              </div>
+              <div class="form-group">
+                <label for="reg-password">Mot de passe</label>
+                <input type="password" id="reg-password" required placeholder="4 caractères minimum" minlength="4" autocomplete="new-password">
+              </div>
+
+              <div class="customizer-section-title">Personnalisation de l'Avatar</div>
+
+              <!-- Teint de peau -->
+              <div class="form-group">
+                <label>Teint de peau</label>
+                <div class="color-palette" id="skin-palette">
+                  <button type="button" class="color-pill active" data-color="#8d5524" style="background:#8d5524;"></button>
+                  <button type="button" class="color-pill" data-color="#5a3825" style="background:#5a3825;"></button>
+                  <button type="button" class="color-pill" data-color="#3c2214" style="background:#3c2214;"></button>
+                  <button type="button" class="color-pill" data-color="#b87d4b" style="background:#b87d4b;"></button>
+                  <button type="button" class="color-pill" data-color="#d89b6b" style="background:#d89b6b;"></button>
+                </div>
+              </div>
+
+              <!-- Style de Tenue -->
+              <div class="form-group">
+                <label>Style de Tenue</label>
+                <div class="select-row">
+                  <select id="reg-outfit">
+                    <option value="faso_dan_fani">Tunique Faso Dan Fani</option>
+                    <option value="boubou">Grand Boubou Traditionnel</option>
+                    <option value="casual">T-Shirt Urbain & Jean</option>
+                    <option value="polo">Polo Sahélien Chic</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Couleur de la tenue -->
+              <div class="form-group">
+                <label>Couleur principale tenue</label>
+                <div class="color-palette" id="outfit-palette">
+                  <button type="button" class="color-pill active" data-color="#d97706" style="background:#d97706;"></button>
+                  <button type="button" class="color-pill" data-color="#dc2626" style="background:#dc2626;"></button>
+                  <button type="button" class="color-pill" data-color="#16a34a" style="background:#16a34a;"></button>
+                  <button type="button" class="color-pill" data-color="#2563eb" style="background:#2563eb;"></button>
+                  <button type="button" class="color-pill" data-color="#eab308" style="background:#eab308;"></button>
+                  <button type="button" class="color-pill" data-color="#f8fafc" style="background:#f8fafc;"></button>
+                </div>
+              </div>
+
+              <!-- Coiffure -->
+              <div class="form-group">
+                <label>Style de Coiffure</label>
+                <select id="reg-hair">
+                  <option value="afro">Coupe Afro Naturelle</option>
+                  <option value="dreads">Dreadlocks & Tresses</option>
+                  <option value="short">Dégradé Court Net</option>
+                  <option value="foulard">Foulard Traditionnel</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Aperçu interactif de l'avatar -->
+            <div class="avatar-preview-box">
+              <span class="preview-label">Aperçu en Direct</span>
+              <div class="preview-stage">
+                <canvas id="avatar-live-preview" width="128" height="160"></canvas>
+              </div>
+              <span class="bonus-mention">+ 15 000 FCFA offerts au démarrage</span>
+            </div>
+          </div>
+
+          <div id="reg-error" class="form-error hidden"></div>
+          <button type="submit" id="btn-submit-register" class="btn-submit">Créer mon personnage & Jouer</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

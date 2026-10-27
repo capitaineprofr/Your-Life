@@ -2,7 +2,14 @@
 Thumbs.db
 .DS_Store
 
+# Node & dependencies
+node_modules/
+
+# Database / User data
+data/database.json
+
 # Logs & temp
 *.log
 scratch/
 temp/
+
