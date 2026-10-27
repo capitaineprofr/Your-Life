@@ -1,4 +1,6 @@
-// --- Gestionnaire d'Interface Utilisateur Modulaire (Style Les Sims) ---
+// --- Gestionnaire d'Interface Utilisateur (Agencement Utilisateur & Besoins) ---
+
+import { FURNITURE_CATALOG } from './furniture.js';
 
 export class UIManager {
   constructor(handlers = {}) {
@@ -13,41 +15,64 @@ export class UIManager {
     this.loginError = document.getElementById('login-error');
     this.regError = document.getElementById('reg-error');
 
-    // Racine HUD & Outils de visibilité
+    // Racine HUD & Outils
     this.hudRoot = document.getElementById('hud-root');
     this.btnToggleUi = document.getElementById('btn-toggle-ui');
     this.btnShowUi = document.getElementById('btn-show-ui');
+    this.btnRecenter = document.getElementById('btn-recenter');
+    this.btnZoomIn = document.getElementById('btn-zoom-in');
+    this.btnZoomOut = document.getElementById('btn-zoom-out');
 
-    // Profil Joueur (Sims Profile)
+    // 1. Profil & Solde (Haut Gauche)
     this.hudUsername = document.getElementById('hud-username');
+    this.hudRoleBadge = document.getElementById('hud-role-badge');
     this.playerFcfa = document.getElementById('player-fcfa');
-    this.onlineCounter = document.getElementById('online-counter');
     this.hudAvatarPreview = document.getElementById('hud-avatar-preview');
     this.btnLogout = document.getElementById('btn-logout');
-    this.simsStatus = document.getElementById('sims-status');
 
-    // Widget Chat
-    this.chatWidget = document.getElementById('hud-chat-widget');
-    this.btnToggleChat = document.getElementById('btn-toggle-chat');
-    this.btnCloseChat = document.getElementById('btn-close-chat');
+    // 2. Tchat Sidebar (Gauche)
+    this.chatSidebar = document.getElementById('hud-chat-sidebar');
+    this.btnToggleChatSize = document.getElementById('btn-toggle-chat-size');
+    this.chatLog = document.getElementById('chat-messages-log');
     this.chatForm = document.getElementById('chat-form');
     this.chatInput = document.getElementById('chat-input');
-    this.chatLog = document.getElementById('chat-messages-log');
-    this.chatUnreadBadge = document.getElementById('chat-unread-badge');
-    this.unreadCount = 0;
 
-    // Panneau Actions
-    this.btnToggleActions = document.getElementById('btn-toggle-actions');
-    this.actionsDrawer = document.getElementById('actions-drawer');
+    // 3. Customisation Sidebar (Droite)
+    this.customSidebar = document.getElementById('hud-custom-sidebar');
+    this.btnToggleCustomSize = document.getElementById('btn-toggle-custom-size');
+    this.customOwnerContent = document.getElementById('custom-owner-content');
+    this.customVisitorNotice = document.getElementById('custom-visitor-notice');
+    this.catalogGrid = document.getElementById('catalog-grid');
+    this.furnitureSelectionBar = document.getElementById('furniture-selection-bar');
+    this.selectedItemName = document.getElementById('selected-item-name');
+    this.btnDeleteFurniture = document.getElementById('btn-delete-furniture');
+    this.btnDeselectFurniture = document.getElementById('btn-deselect-furniture');
+    this.btnClearRoom = document.getElementById('btn-clear-room');
+
+    // 4. Besoins Naturels (Bas Droite)
+    this.needsBars = {
+      hunger: { bar: document.getElementById('need-bar-hunger'), val: document.getElementById('need-val-hunger') },
+      thirst: { bar: document.getElementById('need-bar-thirst'), val: document.getElementById('need-val-thirst') },
+      energy: { bar: document.getElementById('need-bar-energy'), val: document.getElementById('need-val-energy') },
+      hygiene: { bar: document.getElementById('need-bar-hygiene'), val: document.getElementById('need-val-hygiene') }
+    };
+    this.needsStatus = document.getElementById('needs-overall-status');
+
+    // Valeurs initiales des besoins vitaux
+    this.vitalNeeds = {
+      hunger: 90,
+      thirst: 85,
+      energy: 75,
+      hygiene: 95
+    };
 
     // Toasts
     this.toastContainer = document.getElementById('toast-container');
 
-    // Aperçu dynamique
+    // Aperçu dynamique création avatar
     this.avatarLiveCanvas = document.getElementById('avatar-live-preview');
     this.avatarLiveCtx = this.avatarLiveCanvas ? this.avatarLiveCanvas.getContext('2d') : null;
 
-    // Configuration par défaut
     this.avatarConfig = {
       skin: '#8d5524',
       hairStyle: 'afro',
@@ -57,62 +82,108 @@ export class UIManager {
       pantsColor: '#1e293b'
     };
 
+    this.currentCategory = 'all';
     this.bindEvents();
     this.updateAvatarPreview();
+    this.renderCatalog();
+    this.updateNeedsDisplay();
+
+    // Dégénérescence lente des besoins (Simulation de vie)
+    setInterval(() => this.decayNeeds(), 10000);
   }
 
   bindEvents() {
-    // 1. Masquage / Affichage global de l'interface
-    if (this.btnToggleUi) {
-      this.btnToggleUi.addEventListener('click', () => this.toggleAllUI());
+    // Zoom et Recentrage
+    if (this.btnZoomIn) {
+      this.btnZoomIn.addEventListener('click', () => {
+        if (this.handlers.onZoom) this.handlers.onZoom(1.15);
+      });
     }
-    if (this.btnShowUi) {
-      this.btnShowUi.addEventListener('click', () => this.toggleAllUI());
+    if (this.btnZoomOut) {
+      this.btnZoomOut.addEventListener('click', () => {
+        if (this.handlers.onZoom) this.handlers.onZoom(0.85);
+      });
     }
-
-    // Raccourci clavier 'H' pour masquer/afficher l'UI, 'Escape' pour fermer les popups
-    window.addEventListener('keydown', (e) => {
-      // Ignorer si on est en train de taper dans un champ texte
-      const isInputActive = ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
-
-      if ((e.key === 'h' || e.key === 'H') && !isInputActive) {
-        this.toggleAllUI();
-      } else if (e.key === 'Escape') {
-        if (!this.chatWidget.classList.contains('collapsed')) {
-          this.closeChat();
-        }
-        if (isInputActive) {
-          document.activeElement.blur();
-        }
-      } else if (e.key === 'Enter' && !isInputActive && !this.authOverlay.classList.contains('hidden')) {
-        // Rien sur auth
-      } else if (e.key === 'Enter' && !isInputActive && this.authOverlay.classList.contains('hidden')) {
-        this.openChat();
-        e.preventDefault();
-      }
-    });
-
-    // 2. Gestion du Chat Rétractable
-    if (this.btnToggleChat) {
-      this.btnToggleChat.addEventListener('click', () => this.toggleChat());
-    }
-    if (this.btnCloseChat) {
-      this.btnCloseChat.addEventListener('click', () => this.closeChat());
-    }
-
-    // 3. Gestion du Panneau d'Actions
-    if (this.btnToggleActions) {
-      this.btnToggleActions.addEventListener('click', () => {
-        const isCollapsed = this.actionsDrawer.classList.toggle('collapsed');
-        this.btnToggleActions.classList.toggle('active', !isCollapsed);
+    if (this.btnRecenter) {
+      this.btnRecenter.addEventListener('click', () => {
+        if (this.handlers.onRecenter) this.handlers.onRecenter();
       });
     }
 
-    // Onglets Auth
+    // Masquage global de l'UI
+    if (this.btnToggleUi) this.btnToggleUi.addEventListener('click', () => this.toggleAllUI());
+    if (this.btnShowUi) this.btnShowUi.addEventListener('click', () => this.toggleAllUI());
+
+    window.addEventListener('keydown', (e) => {
+      const isInput = ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
+      if ((e.key === 'h' || e.key === 'H') && !isInput) {
+        this.toggleAllUI();
+      } else if (e.key === 'Escape') {
+        if (isInput) document.activeElement.blur();
+        if (this.handlers.onCancelPlacing) this.handlers.onCancelPlacing();
+      }
+    });
+
+    // Réduction / Extension des barres latérales
+    if (this.btnToggleChatSize) {
+      this.btnToggleChatSize.addEventListener('click', () => {
+        this.chatSidebar.classList.toggle('collapsed');
+      });
+    }
+    if (this.btnToggleCustomSize) {
+      this.btnToggleCustomSize.addEventListener('click', () => {
+        this.customSidebar.classList.toggle('collapsed');
+      });
+    }
+
+    // Onglets de catégories du catalogue
+    const catBtns = document.querySelectorAll('.cat-btn');
+    catBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        catBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.currentCategory = btn.dataset.cat;
+        this.renderCatalog();
+      });
+    });
+
+    // Actions sur meuble sélectionné
+    if (this.btnDeleteFurniture) {
+      this.btnDeleteFurniture.addEventListener('click', () => {
+        if (this.handlers.onDeleteSelectedFurniture) {
+          this.handlers.onDeleteSelectedFurniture();
+        }
+      });
+    }
+    if (this.btnDeselectFurniture) {
+      this.btnDeselectFurniture.addEventListener('click', () => {
+        this.hideFurnitureSelection();
+        if (this.handlers.onDeselectFurniture) {
+          this.handlers.onDeselectFurniture();
+        }
+      });
+    }
+    if (this.btnClearRoom) {
+      this.btnClearRoom.addEventListener('click', () => {
+        if (confirm('Êtes-vous sûr de vouloir vider tous les meubles de la pièce ?')) {
+          if (this.handlers.onClearRoom) this.handlers.onClearRoom();
+        }
+      });
+    }
+
+    // Raccourcis d'actions des besoins
+    const needActBtns = document.querySelectorAll('.btn-need-act');
+    needActBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        if (this.handlers.onAction) this.handlers.onAction(action);
+      });
+    });
+
+    // Authentification
     this.tabLogin.addEventListener('click', () => this.switchTab('login'));
     this.tabRegister.addEventListener('click', () => this.switchTab('register'));
 
-    // Sélecteur de couleur de peau
     const skinPills = document.querySelectorAll('#skin-palette .color-pill');
     skinPills.forEach(pill => {
       pill.addEventListener('click', () => {
@@ -123,7 +194,6 @@ export class UIManager {
       });
     });
 
-    // Sélecteur de couleur de tenue
     const outfitPills = document.querySelectorAll('#outfit-palette .color-pill');
     outfitPills.forEach(pill => {
       pill.addEventListener('click', () => {
@@ -134,7 +204,6 @@ export class UIManager {
       });
     });
 
-    // Style de tenue
     const outfitSelect = document.getElementById('reg-outfit');
     if (outfitSelect) {
       outfitSelect.addEventListener('change', (e) => {
@@ -143,7 +212,6 @@ export class UIManager {
       });
     }
 
-    // Coiffure
     const hairSelect = document.getElementById('reg-hair');
     if (hairSelect) {
       hairSelect.addEventListener('change', (e) => {
@@ -152,34 +220,26 @@ export class UIManager {
       });
     }
 
-    // Formulaire Connexion
     this.formLogin.addEventListener('submit', (e) => {
       e.preventDefault();
       const username = document.getElementById('login-username').value;
       const password = document.getElementById('login-password').value;
       this.loginError.classList.add('hidden');
-      if (this.handlers.onLogin) {
-        this.handlers.onLogin(username, password);
-      }
+      if (this.handlers.onLogin) this.handlers.onLogin(username, password);
     });
 
-    // Formulaire Inscription
     this.formRegister.addEventListener('submit', (e) => {
       e.preventDefault();
       const username = document.getElementById('reg-username').value;
       const password = document.getElementById('reg-password').value;
       this.regError.classList.add('hidden');
-      if (this.handlers.onRegister) {
-        this.handlers.onRegister(username, password, this.avatarConfig);
-      }
+      if (this.handlers.onRegister) this.handlers.onRegister(username, password, this.avatarConfig);
     });
 
-    // Déconnexion
     this.btnLogout.addEventListener('click', () => {
       if (this.handlers.onLogout) this.handlers.onLogout();
     });
 
-    // Soumission Chat
     this.chatForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const text = this.chatInput.value.trim();
@@ -187,17 +247,6 @@ export class UIManager {
         this.handlers.onSendChat(text);
         this.chatInput.value = '';
       }
-    });
-
-    // Boutons d'actions
-    const actionButtons = document.querySelectorAll('.action-btn');
-    actionButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const action = btn.dataset.action;
-        if (this.handlers.onAction) {
-          this.handlers.onAction(action);
-        }
-      });
     });
   }
 
@@ -208,24 +257,108 @@ export class UIManager {
     }
   }
 
-  toggleChat() {
-    if (this.chatWidget.classList.contains('collapsed')) {
-      this.openChat();
-    } else {
-      this.closeChat();
+  renderCatalog() {
+    if (!this.catalogGrid) return;
+    this.catalogGrid.innerHTML = '';
+
+    const items = Object.values(FURNITURE_CATALOG).filter(item => {
+      if (this.currentCategory === 'all') return true;
+      return item.category === this.currentCategory;
+    });
+
+    for (const item of items) {
+      const card = document.createElement('div');
+      card.className = 'catalog-card';
+      card.innerHTML = `
+        <div class="card-info">
+          <span class="card-title">${item.name}</span>
+          <span class="card-dims">${item.sizeX}x${item.sizeY} cases</span>
+        </div>
+        <button class="btn-place-item" data-id="${item.id}">Poser</button>
+      `;
+
+      card.querySelector('.btn-place-item').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.handlers.onStartPlacing) {
+          this.handlers.onStartPlacing(item.id);
+          this.showToast(`Cliquez sur le sol pour placer : ${item.name}`, 3000);
+        }
+      });
+
+      this.catalogGrid.appendChild(card);
     }
   }
 
-  openChat() {
-    this.chatWidget.classList.remove('collapsed');
-    this.unreadCount = 0;
-    this.chatUnreadBadge.classList.add('hidden');
-    setTimeout(() => this.chatInput.focus(), 50);
+  showFurnitureSelection(item) {
+    if (this.furnitureSelectionBar) {
+      this.selectedItemName.textContent = item.name || item.type;
+      this.furnitureSelectionBar.classList.remove('hidden');
+    }
   }
 
-  closeChat() {
-    this.chatWidget.classList.add('collapsed');
-    this.chatInput.blur();
+  hideFurnitureSelection() {
+    if (this.furnitureSelectionBar) {
+      this.furnitureSelectionBar.classList.add('hidden');
+    }
+  }
+
+  setOwnerStatus(isOwner) {
+    if (this.hudRoleBadge) {
+      this.hudRoleBadge.textContent = isOwner ? 'HÔTE' : 'VISITEUR';
+      this.hudRoleBadge.style.color = isOwner ? '#facc15' : '#94a3b8';
+    }
+
+    if (this.customOwnerContent && this.customVisitorNotice) {
+      if (isOwner) {
+        this.customOwnerContent.classList.remove('hidden');
+        this.customVisitorNotice.classList.add('hidden');
+      } else {
+        this.customOwnerContent.classList.add('hidden');
+        this.customVisitorNotice.classList.remove('hidden');
+      }
+    }
+  }
+
+  // Gestion des Besoins Vitaux
+  replenishNeed(need, amount) {
+    if (this.vitalNeeds[need] !== undefined) {
+      this.vitalNeeds[need] = Math.min(100, this.vitalNeeds[need] + amount);
+      this.updateNeedsDisplay();
+    }
+  }
+
+  decayNeeds() {
+    this.vitalNeeds.hunger = Math.max(10, this.vitalNeeds.hunger - 1);
+    this.vitalNeeds.thirst = Math.max(10, this.vitalNeeds.thirst - 2);
+    this.vitalNeeds.energy = Math.max(10, this.vitalNeeds.energy - 1);
+    this.vitalNeeds.hygiene = Math.max(10, this.vitalNeeds.hygiene - 1);
+    this.updateNeedsDisplay();
+  }
+
+  updateNeedsDisplay() {
+    for (const [key, obj] of Object.entries(this.needsBars)) {
+      if (obj.bar && obj.val) {
+        const val = this.vitalNeeds[key];
+        obj.val.textContent = `${val}%`;
+        obj.bar.style.width = `${val}%`;
+
+        // Changement de couleur selon le niveau
+        if (val < 25) {
+          obj.bar.className = 'need-fill bar-red';
+        } else if (val < 50) {
+          obj.bar.className = 'need-fill bar-yellow';
+        } else {
+          obj.bar.className = `need-fill bar-${key === 'thirst' ? 'blue' : (key === 'hygiene' ? 'cyan' : 'green')}`;
+        }
+      }
+    }
+
+    const avg = (this.vitalNeeds.hunger + this.vitalNeeds.thirst + this.vitalNeeds.energy + this.vitalNeeds.hygiene) / 4;
+    if (this.needsStatus) {
+      if (avg > 70) this.needsStatus.textContent = 'En forme';
+      else if (avg > 40) this.needsStatus.textContent = 'Fatigué';
+      else this.needsStatus.textContent = 'Épuisé';
+    }
   }
 
   switchTab(tab) {
@@ -272,17 +405,7 @@ export class UIManager {
 
   updateFCFA(amount) {
     const formatted = new Intl.NumberFormat('fr-FR').format(amount);
-    this.playerFcfa.textContent = formatted;
-  }
-
-  setOnlineCount(count) {
-    this.onlineCounter.textContent = `${count} en ligne`;
-  }
-
-  setStatus(text) {
-    if (this.simsStatus) {
-      this.simsStatus.textContent = text;
-    }
+    this.playerFcfa.textContent = `${formatted} FCFA`;
   }
 
   showToast(message, duration = 3000) {
@@ -293,7 +416,7 @@ export class UIManager {
 
     setTimeout(() => {
       toast.style.opacity = '0';
-      toast.style.transform = 'translateX(20px)';
+      toast.style.transform = 'translateY(-10px)';
       setTimeout(() => toast.remove(), 300);
     }, duration);
   }
@@ -304,16 +427,8 @@ export class UIManager {
     entry.innerHTML = `<span class="chat-author">${username} :</span><span class="chat-text">${text}</span>`;
     this.chatLog.appendChild(entry);
     this.chatLog.scrollTop = this.chatLog.scrollHeight;
-
-    // Si le chat est réduit, incrémenter le badge non lu
-    if (this.chatWidget.classList.contains('collapsed')) {
-      this.unreadCount++;
-      this.chatUnreadBadge.textContent = this.unreadCount;
-      this.chatUnreadBadge.classList.remove('hidden');
-    }
   }
 
-  // Rendu de l'aperçu dynamique de l'avatar dans le formulaire
   updateAvatarPreview() {
     if (!this.avatarLiveCtx) return;
     const ctx = this.avatarLiveCtx;
@@ -421,22 +536,22 @@ export class UIManager {
     const hairStyle = avatar.hairStyle || 'afro';
 
     ctx.fillStyle = skin;
-    ctx.fillRect(12, 16, 24, 24);
+    ctx.fillRect(10, 14, 24, 24);
 
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(16, 24, 5, 5);
-    ctx.fillRect(27, 24, 5, 5);
+    ctx.fillRect(14, 22, 5, 5);
+    ctx.fillRect(25, 22, 5, 5);
     ctx.fillStyle = '#0f172a';
-    ctx.fillRect(18, 26, 3, 3);
-    ctx.fillRect(29, 26, 3, 3);
+    ctx.fillRect(16, 24, 3, 3);
+    ctx.fillRect(27, 24, 3, 3);
 
     ctx.fillStyle = hair;
     if (hairStyle === 'afro') {
       ctx.beginPath();
-      ctx.arc(24, 18, 14, 0, Math.PI * 2);
+      ctx.arc(22, 16, 14, 0, Math.PI * 2);
       ctx.fill();
     } else {
-      ctx.fillRect(10, 10, 28, 10);
+      ctx.fillRect(8, 8, 28, 10);
     }
   }
 }

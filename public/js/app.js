@@ -1,4 +1,4 @@
-// --- Point d'Entrée Principal de l'Application Your-Life ---
+// --- Point d'Entrée Principal Your-Life (Customisation, Multijoueur & Besoins) ---
 
 import { IsometricEngine } from './engine.js';
 import { NetworkClient } from './network.js';
@@ -9,7 +9,7 @@ class YourLifeApp {
     this.canvas = document.getElementById('game-canvas');
     this.clickMarker = document.getElementById('click-marker');
 
-    // Initialisation du client réseau
+    // Initialisation Client Réseau
     this.network = new NetworkClient({
       onConnected: () => {
         console.log('[Réseau] Connecté au serveur multijoueur');
@@ -21,17 +21,31 @@ class YourLifeApp {
       onRoomInit: (data) => {
         this.engine.setPlayers(data.players);
         this.engine.setLocalPlayerId(data.selfId);
-        this.ui.setOnlineCount(data.players.length);
-        this.ui.showToast(`Bienvenue dans la ${data.roomName} !`, 3000);
+        this.engine.setIsOwner(data.isOwner);
+        this.engine.setFurniture(data.furniture);
+
+        this.ui.setOwnerStatus(data.isOwner);
+        this.ui.showToast(data.isOwner
+          ? 'Vous êtes le premier connecté : Propriétaire de l\'appartement !'
+          : `Bienvenue dans la ${data.roomName} !`, 4000);
       },
       onPlayerJoined: (player) => {
         this.engine.addOrUpdatePlayer(player);
-        this.ui.setOnlineCount(this.engine.players.size);
         this.ui.showToast(`${player.username} a rejoint l'appartement.`, 2500);
       },
       onPlayerLeft: (id) => {
         this.engine.removePlayer(id);
-        this.ui.setOnlineCount(this.engine.players.size);
+      },
+      onOwnerAssigned: (ownerId, username) => {
+        const isOwner = ownerId === this.network.currentUser?.id;
+        this.engine.setIsOwner(isOwner);
+        this.ui.setOwnerStatus(isOwner);
+        this.ui.showToast(isOwner
+          ? 'Vous êtes maintenant le propriétaire de la résidence !'
+          : `${username} est le nouveau propriétaire de la salle.`, 4000);
+      },
+      onFurnitureSync: (furniture) => {
+        this.engine.setFurniture(furniture);
       },
       onPlayerMove: (data) => {
         if (data.id !== this.network.currentUser?.id) {
@@ -62,14 +76,24 @@ class YourLifeApp {
       }
     });
 
-    // Initialisation du moteur isométrique
-    this.engine = new IsometricEngine(
-      this.canvas,
-      (clickData) => this.handleFloorClick(clickData),
-      (moveData) => this.handlePlayerMoveStep(moveData)
-    );
+    // Initialisation Moteur Isométrique
+    this.engine = new IsometricEngine(this.canvas, {
+      onFloorClick: (clickData) => this.handleFloorClick(clickData),
+      onPlayerMoveStep: (moveData) => this.handlePlayerMoveStep(moveData),
+      onPlaceFurniture: (item) => {
+        this.network.sendFurniturePlace(item);
+        this.ui.showToast(`Meuble posé : ${item.type}`, 2000);
+      },
+      onSelectFurniture: (item) => {
+        this.ui.showFurnitureSelection(item);
+      },
+      onDeselectFurniture: () => {
+        this.ui.hideFurnitureSelection();
+      },
+      onFurnitureInteract: (item) => this.handleFurnitureInteraction(item)
+    });
 
-    // Initialisation du gestionnaire UI
+    // Initialisation Gestionnaire UI
     this.ui = new UIManager({
       onLogin: async (username, password) => {
         try {
@@ -99,31 +123,55 @@ class YourLifeApp {
       onSendChat: (text) => {
         this.network.sendChat(text);
       },
+      onStartPlacing: (itemType) => {
+        this.engine.setPlacingItem(itemType);
+      },
+      onCancelPlacing: () => {
+        this.engine.cancelPlacing();
+      },
+      onDeleteSelectedFurniture: () => {
+        if (this.engine.selectedFurniture) {
+          this.network.sendFurnitureRemove(this.engine.selectedFurniture.id);
+          this.engine.selectedFurniture = null;
+          this.ui.hideFurnitureSelection();
+          this.ui.showToast('Meuble supprimé', 1500);
+        }
+      },
+      onClearRoom: () => {
+        this.network.sendFurnitureClear();
+        this.engine.selectedFurniture = null;
+        this.ui.hideFurnitureSelection();
+        this.ui.showToast('Tous les meubles ont été retirés', 2500);
+      },
+      onZoom: (factor) => {
+        this.engine.userZoom = Math.min(2.5, Math.max(0.65, this.engine.userZoom * factor));
+        this.engine.resize();
+      },
+      onRecenter: () => {
+        this.engine.recenter();
+        this.ui.showToast('Vue recentrée', 1500);
+      },
       onAction: async (action) => {
         if (action === 'work') {
-          // Mini-jeu travail à l'ordinateur
           const res = await this.network.workPC();
           if (res && res.success) {
             this.ui.updateFCFA(res.fcfa);
-            this.ui.showToast(`+${new Intl.NumberFormat('fr-FR').format(res.gain)} FCFA gagnés en télétravail !`, 3000);
+            this.ui.replenishNeed('energy', -6);
+            this.ui.showToast(`+${new Intl.NumberFormat('fr-FR').format(res.gain)} FCFA gagnés !`, 2500);
             this.network.sendChat('*travaille activement sur son projet web*');
           }
         } else if (action === 'drink') {
           this.network.sendAction('drink');
-          this.network.sendChat('*déguste un verre de jus de Bissap bien frais*');
-        } else if (action === 'wave') {
-          this.network.sendAction('wave');
-          this.network.sendChat('Salutations tout le monde !');
+          this.ui.replenishNeed('thirst', 35);
+          this.network.sendChat('*déguste un grand verre de Bissap frais*');
         } else if (action === 'dance') {
           this.network.sendAction('dance');
+          this.ui.replenishNeed('energy', 10);
           this.network.sendChat('*danse au rythme du Coupé-Décalé et Warba*');
-        } else if (action === 'sit') {
-          this.network.sendAction('sit');
         }
       }
     });
 
-    // Vérifier si une session active existe déjà
     this.checkInitialSession();
   }
 
@@ -139,13 +187,11 @@ class YourLifeApp {
   }
 
   handleFloorClick(clickData) {
-    // Afficher le marqueur visuel au sol
     if (this.clickMarker) {
       this.clickMarker.style.left = `${clickData.windowX}px`;
       this.clickMarker.style.top = `${clickData.windowY}px`;
       this.clickMarker.classList.remove('hidden');
 
-      // Réinitialiser l'animation
       const ring = this.clickMarker.querySelector('.marker-ring');
       if (ring) {
         ring.style.animation = 'none';
@@ -158,18 +204,8 @@ class YourLifeApp {
       }, 700);
     }
 
-    // Informer le serveur du mouvement demandé
     if (this.network.isConnected) {
       this.network.sendMove(clickData.gx, clickData.gy);
-    }
-
-    // Actions automatiques contextuelles
-    if (clickData.cellType === 2) {
-      this.ui.showToast('Déplacement vers le canapé...', 1500);
-    } else if (clickData.cellType === 3) {
-      this.ui.showToast('Déplacement vers le bureau...', 1500);
-    } else if (clickData.cellType === 4) {
-      this.ui.showToast('Déplacement vers le comptoir cuisine...', 1500);
     }
   }
 
@@ -183,9 +219,52 @@ class YourLifeApp {
       );
     }
   }
+
+  handleFurnitureInteraction(item) {
+    const id = this.network.currentUser?.id;
+    if (!id) return;
+
+    switch (item.interactive) {
+      case 'sleep':
+        this.engine.setPlayerAction(id, 'sleep');
+        this.network.sendAction('sleep');
+        this.ui.replenishNeed('energy', 40);
+        this.ui.showToast('Vous vous reposez dans le lit... (+Sommeil)', 2500);
+        this.network.sendChat('*s\'allonge pour une sieste réparatrice*');
+        break;
+
+      case 'sit':
+        this.engine.setPlayerAction(id, 'sit');
+        this.network.sendAction('sit');
+        this.ui.replenishNeed('energy', 15);
+        this.ui.showToast('Vous êtes assis confortablement.', 2000);
+        break;
+
+      case 'drink':
+        this.network.sendAction('drink');
+        this.ui.replenishNeed('thirst', 40);
+        this.ui.showToast('Vous vous servez une boisson fraîche (+Soif)', 2500);
+        this.network.sendChat('*prend une boisson fraîche au réfrigérateur*');
+        break;
+
+      case 'cook':
+        this.ui.replenishNeed('hunger', 45);
+        this.ui.showToast('Vous cuisinez un plat traditionnel (+Faim)', 2500);
+        this.network.sendChat('*cuisine un délicieux riz gras au soumbala*');
+        break;
+
+      case 'work':
+        this.ui.handlers.onAction('work');
+        break;
+
+      case 'watch_tv':
+        this.network.sendChat('*regarde les informations sur la RTB*');
+        this.ui.showToast('Vous regardez la télévision.', 2000);
+        break;
+    }
+  }
 }
 
-// Initialisation au chargement de la page
 window.addEventListener('DOMContentLoaded', () => {
   new YourLifeApp();
 });

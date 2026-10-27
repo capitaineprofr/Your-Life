@@ -160,6 +160,19 @@ const wss = new WebSocketServer({ server });
 
 // État de la salle (Appartement Ouagadougou)
 const connectedPlayers = new Map(); // ws -> playerData
+let roomOwnerId = null;
+
+// Mobilier dynamique de la pièce (Géré et modifiable par le Propriétaire)
+let roomFurniture = [
+  { id: 'f_bed', type: 'bed_double', gx: 4, gy: 3, sizeX: 2, sizeY: 3, interactive: 'sleep' },
+  { id: 'f_sofa', type: 'sofa_3p', gx: 7, gy: 6, sizeX: 3, sizeY: 1, interactive: 'sit' },
+  { id: 'f_table', type: 'table_coffee', gx: 8, gy: 8, sizeX: 2, sizeY: 1, interactive: null },
+  { id: 'f_rug', type: 'rug', gx: 6, gy: 7, sizeX: 3, sizeY: 2, interactive: null, isWalkable: true },
+  { id: 'f_tv', type: 'tv_stand', gx: 10, gy: 9, sizeX: 2, sizeY: 1, interactive: 'watch_tv' },
+  { id: 'f_desk', type: 'desk_pc', gx: 3, gy: 7, sizeX: 2, sizeY: 1, interactive: 'work' },
+  { id: 'f_fridge', type: 'fridge', gx: 12, gy: 5, sizeX: 1, sizeY: 1, interactive: 'drink' },
+  { id: 'f_sink', type: 'kitchen_sink', gx: 12, gy: 7, sizeX: 2, sizeY: 1, interactive: 'cook' }
+];
 
 // Point de spawn initial par défaut
 const DEFAULT_SPAWN = { gx: 10, gy: 6 };
@@ -189,10 +202,18 @@ wss.on('connection', (ws) => {
         }
 
         authenticatedUser = user;
+
+        // Le premier joueur connecté devient propriétaire de l'appartement
+        if (!roomOwnerId || connectedPlayers.size === 0) {
+          roomOwnerId = user.id;
+        }
+
+        const isOwner = user.id === roomOwnerId;
         const playerData = {
           id: user.id,
           username: user.username,
           avatar: user.avatar,
+          isOwner,
           gx: DEFAULT_SPAWN.gx + (Math.random() * 1.5 - 0.75),
           gy: DEFAULT_SPAWN.gy + (Math.random() * 1.5 - 0.75),
           targetGx: null,
@@ -205,12 +226,15 @@ wss.on('connection', (ws) => {
 
         connectedPlayers.set(ws, playerData);
 
-        // Envoyer la liste de tous les joueurs connectés au nouveau joueur
+        // Envoyer la liste de tous les joueurs et l'état complet au nouveau joueur
         const currentPlayersList = Array.from(connectedPlayers.values());
         ws.send(JSON.stringify({
           type: 'room_init',
           selfId: user.id,
+          isOwner,
+          ownerId: roomOwnerId,
           players: currentPlayersList,
+          furniture: roomFurniture,
           roomName: 'Résidence Ouaga 2000'
         }));
 
@@ -220,7 +244,7 @@ wss.on('connection', (ws) => {
           player: playerData
         }, ws);
 
-        console.log(`[Joueur Connecté] ${user.username} (${user.id})`);
+        console.log(`[Joueur Connecté] ${user.username} (${user.id}) - Propriétaire: ${isOwner}`);
       }
 
       // Déplacement du joueur
@@ -301,6 +325,55 @@ wss.on('connection', (ws) => {
           isSitting: player.isSitting
         });
       }
+
+      // Customisation du mobilier (Réservé au Propriétaire)
+      else if (msg.type === 'furniture_place') {
+        const player = connectedPlayers.get(ws);
+        if (!player || player.id !== roomOwnerId) return;
+
+        const newItem = {
+          id: 'f_' + crypto.randomUUID().slice(0, 8),
+          type: msg.item.type,
+          gx: Math.round(msg.item.gx),
+          gy: Math.round(msg.item.gy),
+          sizeX: msg.item.sizeX || 1,
+          sizeY: msg.item.sizeY || 1,
+          interactive: msg.item.interactive || null,
+          isWalkable: !!msg.item.isWalkable
+        };
+
+        roomFurniture.push(newItem);
+        broadcast({ type: 'furniture_sync', furniture: roomFurniture });
+      }
+
+      else if (msg.type === 'furniture_move') {
+        const player = connectedPlayers.get(ws);
+        if (!player || player.id !== roomOwnerId) return;
+
+        const item = roomFurniture.find(f => f.id === msg.id);
+        if (item) {
+          item.gx = Math.round(msg.gx);
+          item.gy = Math.round(msg.gy);
+          broadcast({ type: 'furniture_sync', furniture: roomFurniture });
+        }
+      }
+
+      else if (msg.type === 'furniture_remove') {
+        const player = connectedPlayers.get(ws);
+        if (!player || player.id !== roomOwnerId) return;
+
+        roomFurniture = roomFurniture.filter(f => f.id !== msg.id);
+        broadcast({ type: 'furniture_sync', furniture: roomFurniture });
+      }
+
+      // Réinitialisation des meubles (Supprimer tout)
+      else if (msg.type === 'furniture_clear') {
+        const player = connectedPlayers.get(ws);
+        if (!player || player.id !== roomOwnerId) return;
+
+        roomFurniture = [];
+        broadcast({ type: 'furniture_sync', furniture: roomFurniture });
+      }
     } catch (e) {
       console.error('Erreur traitement message WebSocket:', e);
     }
@@ -315,6 +388,23 @@ wss.on('connection', (ws) => {
         type: 'player_left',
         id: player.id
       });
+
+      // Si le propriétaire quitte, céder la propriété au joueur restant
+      if (player.id === roomOwnerId) {
+        const remaining = Array.from(connectedPlayers.values());
+        if (remaining.length > 0) {
+          roomOwnerId = remaining[0].id;
+          remaining[0].isOwner = true;
+          broadcast({
+            type: 'owner_assigned',
+            ownerId: roomOwnerId,
+            username: remaining[0].username
+          });
+          console.log(`[Nouveau Propriétaire] ${remaining[0].username}`);
+        } else {
+          roomOwnerId = null;
+        }
+      }
     }
   });
 });
@@ -322,3 +412,4 @@ wss.on('connection', (ws) => {
 server.listen(PORT, () => {
   console.log(`[Your-Life] Serveur opérationnel sur http://localhost:${PORT}`);
 });
+

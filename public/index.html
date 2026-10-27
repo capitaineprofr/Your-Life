@@ -15,92 +15,156 @@
     <!-- Canvas de jeu isométrique -->
     <canvas id="game-canvas"></canvas>
 
-    <!-- Marqueur de clic au sol (overlay HTML fluide) -->
+    <!-- Marqueur de clic au sol -->
     <div id="click-marker" class="click-marker hidden">
       <div class="marker-ring"></div>
       <div class="marker-dot"></div>
     </div>
 
-    <!-- HUD Modulaire & Séparé (Style Les Sims) -->
+    <!-- HUD Modulaire & Séparé (Agencement Demandé par l'Utilisateur) -->
     <div id="hud-root" class="hud-root">
 
-      <!-- 1. En haut à gauche : Badge de lieu discret -->
-      <div id="hud-room-info" class="floating-widget widget-top-left">
-        <div class="room-pill">
-          <span class="badge-flag">BF</span>
-          <div class="room-text">
-            <span class="room-title">Résidence Ouaga 2000</span>
-            <span id="online-counter" class="room-online">1 en ligne</span>
+      <!-- 1. En haut à gauche : Solde & Profil -->
+      <div id="hud-profile-widget" class="floating-widget widget-top-left-profile">
+        <div class="profile-header">
+          <div class="sims-portrait-wrapper">
+            <div class="sims-plumbob" title="Humeur Excellente"></div>
+            <canvas id="hud-avatar-preview" width="44" height="44"></canvas>
+          </div>
+          <div class="profile-details">
+            <div class="profile-name-row">
+              <span id="hud-username" class="profile-username">Joueur</span>
+              <span id="hud-role-badge" class="badge-role">Hôte</span>
+              <button id="btn-logout" class="btn-logout" title="Déconnexion">Quitter</button>
+            </div>
+            <div class="profile-currency-row">
+              <span class="currency-tag">SOLDE</span>
+              <span id="player-fcfa" class="currency-val">15 000 FCFA</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- 2. En haut à droite : Outils et Masquage de l'interface -->
-      <div id="hud-top-tools" class="floating-widget widget-top-right">
-        <button id="btn-toggle-ui" class="btn-tool" title="Masquer l'interface (Touche H)">
-          <span class="tool-icon-eye"></span>
-          <span class="btn-tool-label">Masquer UI [H]</span>
-        </button>
+      <!-- 2. Centre Haut : Contrôles de Caméra (Zoom & Recentrage) -->
+      <div id="hud-camera-controls" class="floating-widget widget-top-center-tools">
+        <button id="btn-zoom-in" class="btn-tool-icon" title="Zoom avant (+)">+</button>
+        <button id="btn-zoom-out" class="btn-tool-icon" title="Zoom arrière (-)">-</button>
+        <button id="btn-recenter" class="btn-tool-icon" title="Recentrer la caméra">Recentrer</button>
+        <button id="btn-toggle-ui" class="btn-tool-icon btn-hide-ui" title="Masquer l'interface (Touche H)">Masquer UI [H]</button>
       </div>
 
-      <!-- 3. En bas à gauche : Fiche Profil Personnage (Style Les Sims) -->
-      <div id="hud-sims-profile" class="floating-widget widget-sims-profile">
-        <div class="sims-portrait-wrapper">
-          <div class="sims-plumbob" title="Humeur Excellente"></div>
-          <canvas id="hud-avatar-preview" width="48" height="48"></canvas>
+      <!-- 3. Sur la gauche : Panneau de Tchat Vertical Dédié -->
+      <div id="hud-chat-sidebar" class="floating-widget widget-left-chat">
+        <div class="sidebar-header">
+          <span class="sidebar-title">Discussion Salon</span>
+          <button id="btn-toggle-chat-size" class="btn-sidebar-toggle" title="Réduire">_</button>
         </div>
-        <div class="sims-info">
-          <div class="sims-name-row">
-            <span id="hud-username" class="sims-username">Joueur</span>
-            <button id="btn-logout" class="btn-sims-logout" title="Déconnexion">Quitter</button>
+        <div id="chat-messages-log" class="chat-sidebar-log"></div>
+        <form id="chat-form" class="chat-sidebar-form">
+          <input type="text" id="chat-input" placeholder="Discuter..." maxlength="100" autocomplete="off">
+          <button type="submit" id="btn-send-chat" class="btn-primary">Envoyer</button>
+        </form>
+      </div>
+
+      <!-- 4. Sur la droite : Panneau de Customisation & Mobilier -->
+      <div id="hud-custom-sidebar" class="floating-widget widget-right-custom">
+        <div class="sidebar-header">
+          <span class="sidebar-title">Customisation Mobilier</span>
+          <button id="btn-toggle-custom-size" class="btn-sidebar-toggle" title="Réduire">_</button>
+        </div>
+
+        <div id="custom-owner-content" class="custom-content">
+          <!-- Onglets de Catégorie -->
+          <div class="catalog-tabs">
+            <button class="cat-btn active" data-cat="all">Tous</button>
+            <button class="cat-btn" data-cat="salon">Salon</button>
+            <button class="cat-btn" data-cat="chambre">Lit</button>
+            <button class="cat-btn" data-cat="cuisine">Cuisine</button>
+            <button class="cat-btn" data-cat="bureau">Bureau</button>
           </div>
-          <div class="sims-status-tag" id="sims-status">Chez soi • En forme</div>
-          <div class="sims-currency-badge">
-            <span class="currency-tag">FCFA</span>
-            <span id="player-fcfa" class="sims-currency-amount">15 000</span>
+
+          <!-- Outils de sélection quand un meuble est sélectionné -->
+          <div id="furniture-selection-bar" class="furniture-selection-bar hidden">
+            <span id="selected-item-name" class="selected-name">Meuble sélectionné</span>
+            <div class="selection-actions">
+              <button id="btn-delete-furniture" class="btn-action-del">Supprimer</button>
+              <button id="btn-deselect-furniture" class="btn-action-cancel">Fermer</button>
+            </div>
           </div>
+
+          <!-- Grille du catalogue d'objets -->
+          <div id="catalog-grid" class="catalog-grid"></div>
+
+          <!-- Bouton Vider la salle -->
+          <button id="btn-clear-room" class="btn-clear-room">Vider toute la salle</button>
+        </div>
+
+        <div id="custom-visitor-notice" class="visitor-notice hidden">
+          <p>Mode Visiteur</p>
+          <span>Seul le premier connecté (Propriétaire) peut aménager et déplacer le mobilier de la résidence.</span>
         </div>
       </div>
 
-      <!-- 4. En bas au centre : Widget de Tchat Rétractable -->
-      <div id="hud-chat-widget" class="floating-widget widget-chat collapsed">
-        <button id="btn-toggle-chat" class="chat-launcher-btn">
-          <span class="chat-icon"></span>
-          <span class="chat-launcher-label">Discussion</span>
-          <span id="chat-unread-badge" class="chat-unread hidden">0</span>
-        </button>
-
-        <div class="chat-panel">
-          <div class="chat-header">
-            <span class="chat-title">Tchat de la Résidence</span>
-            <button id="btn-close-chat" class="btn-close-widget" title="Réduire">_</button>
-          </div>
-          <div id="chat-messages-log" class="chat-log"></div>
-          <form id="chat-form" class="chat-input-bar">
-            <input type="text" id="chat-input" placeholder="Écrire un message..." maxlength="100" autocomplete="off">
-            <button type="submit" id="btn-send-chat" class="btn-primary">Envoyer</button>
-          </form>
+      <!-- 5. En bas à droite : Besoins Naturels (Style Les Sims) -->
+      <div id="hud-needs-widget" class="floating-widget widget-bottom-right-needs">
+        <div class="needs-header">
+          <span class="needs-title">Besoins Vitaux</span>
+          <span id="needs-overall-status" class="needs-tag">En forme</span>
         </div>
-      </div>
+        <div class="needs-bars-grid">
+          <!-- Faim -->
+          <div class="need-item">
+            <div class="need-label-row">
+              <span class="need-name">Faim</span>
+              <span id="need-val-hunger" class="need-percent">90%</span>
+            </div>
+            <div class="need-track">
+              <div id="need-bar-hunger" class="need-fill bar-green" style="width: 90%;"></div>
+            </div>
+          </div>
+          <!-- Soif -->
+          <div class="need-item">
+            <div class="need-label-row">
+              <span class="need-name">Soif</span>
+              <span id="need-val-thirst" class="need-percent">85%</span>
+            </div>
+            <div class="need-track">
+              <div id="need-bar-thirst" class="need-fill bar-blue" style="width: 85%;"></div>
+            </div>
+          </div>
+          <!-- Énergie / Sommeil -->
+          <div class="need-item">
+            <div class="need-label-row">
+              <span class="need-name">Sommeil</span>
+              <span id="need-val-energy" class="need-percent">75%</span>
+            </div>
+            <div class="need-track">
+              <div id="need-bar-energy" class="need-fill bar-yellow" style="width: 75%;"></div>
+            </div>
+          </div>
+          <!-- Hygiène -->
+          <div class="need-item">
+            <div class="need-label-row">
+              <span class="need-name">Hygiène</span>
+              <span id="need-val-hygiene" class="need-percent">95%</span>
+            </div>
+            <div class="need-track">
+              <div id="need-bar-hygiene" class="need-fill bar-cyan" style="width: 95%;"></div>
+            </div>
+          </div>
+        </div>
 
-      <!-- 5. En bas à droite : Panneau d'Actions Dépliable -->
-      <div id="hud-actions-menu" class="floating-widget widget-actions">
-        <button id="btn-toggle-actions" class="actions-launcher-btn active">
-          <span class="actions-icon"></span>
-          <span class="actions-launcher-label">Interactions</span>
-        </button>
-        <div id="actions-drawer" class="actions-drawer">
-          <button class="action-btn" data-action="wave">Saluer</button>
-          <button class="action-btn" data-action="dance">Danser</button>
-          <button class="action-btn" data-action="sit">S'asseoir</button>
-          <button class="action-btn action-special" data-action="work">Travailler PC (+FCFA)</button>
-          <button class="action-btn" data-action="drink">Boire Bissap</button>
+        <!-- Raccourcis d'actions immédiates pour combler les besoins -->
+        <div class="quick-needs-actions">
+          <button class="btn-need-act" data-action="drink">Boire Bissap (+Soif)</button>
+          <button class="btn-need-act" data-action="work">Travailler (+FCFA)</button>
+          <button class="btn-need-act" data-action="dance">Danser</button>
         </div>
       </div>
 
     </div>
 
-    <!-- Bouton discret de rappel pour réafficher l'UI quand tout est masqué -->
+    <!-- Bouton de réapparition quand l'UI est masquée -->
     <button id="btn-show-ui" class="btn-floating-pill hidden">
       Afficher l'interface (H)
     </button>
@@ -108,7 +172,7 @@
     <!-- Toasts / Notifications -->
     <div id="toast-container" class="toast-container"></div>
 
-    <!-- Modal d'Authentification (Connexion / Inscription) -->
+    <!-- Modal d'Authentification -->
     <div id="auth-modal-overlay" class="modal-overlay">
       <div class="modal-card auth-card">
         <div class="modal-banner">
@@ -139,7 +203,7 @@
           <button type="submit" id="btn-submit-login" class="btn-submit">Entrer dans la résidence</button>
         </form>
 
-        <!-- Formulaire d'Inscription & Personnalisation Avatar -->
+        <!-- Formulaire d'Inscription -->
         <form id="form-register" class="auth-form hidden">
           <div class="register-columns">
             <div class="register-fields">
@@ -179,7 +243,7 @@
                 </div>
               </div>
 
-              <!-- Couleur de la tenue -->
+              <!-- Couleur tenue -->
               <div class="form-group">
                 <label>Couleur principale tenue</label>
                 <div class="color-palette" id="outfit-palette">
@@ -204,7 +268,7 @@
               </div>
             </div>
 
-            <!-- Aperçu interactif de l'avatar -->
+            <!-- Aperçu -->
             <div class="avatar-preview-box">
               <span class="preview-label">Aperçu en Direct</span>
               <div class="preview-stage">

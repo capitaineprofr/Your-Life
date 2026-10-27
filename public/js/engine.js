@@ -1,15 +1,16 @@
-// --- Moteur de Rendu Isométrique & Déplacement Canvas ---
+// --- Moteur de Rendu Isométrique 2.5D, Mobilier Dynamique & Navigation ---
+
+import { renderFurniture, FURNITURE_CATALOG } from './furniture.js';
 
 export class IsometricEngine {
-  constructor(canvas, onFloorClick, onPlayerMoveStep) {
+  constructor(canvas, callbacks = {}) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.onFloorClick = onFloorClick;
-    this.onPlayerMoveStep = onPlayerMoveStep;
+    this.callbacks = callbacks;
 
-    // Décor
+    // Décor de la pièce vide (Permet la customisation totale sans meubles incrustés)
     this.decorImage = new Image();
-    this.decorImage.src = 'assets/decor_apartment.jpg';
+    this.decorImage.src = 'assets/decor_empty_room.jpg';
     this.isDecorLoaded = false;
     this.decorImage.onload = () => {
       this.isDecorLoaded = true;
@@ -19,182 +20,277 @@ export class IsometricEngine {
     this.V_WIDTH = 1200;
     this.V_HEIGHT = 896;
 
-    // Constantes de transformation Isométrique
+    // Constantes de projection Isométrique
     this.ORIGIN_X = 600;
     this.ORIGIN_Y = 390;
-    this.TILE_U_X = -29.4; // Vecteur U (gx : vers Sud-Ouest)
+    this.TILE_U_X = -29.4; // Vecteur U (gx : Sud-Ouest)
     this.TILE_U_Y = 14.4;
-    this.TILE_V_X = 29.4;  // Vecteur V (gy : vers Sud-Est)
+    this.TILE_V_X = 29.4;  // Vecteur V (gy : Sud-Est)
     this.TILE_V_Y = 14.4;
 
     this.GRID_SIZE = 16;
 
-    // Grille de collision (16x16)
-    // 0: Obstacle / Mur
-    // 1: Sol Marchable
-    // 2: Canapé (Assis)
-    // 3: Bureau (Travailler)
-    // 4: Cuisine (Boire / Manger)
-    this.collisionGrid = this.initCollisionGrid();
+    // Grille de collision dynamique (16x16)
+    this.collisionGrid = Array.from({ length: 16 }, () => Array(16).fill(0));
 
-    // Joueurs dans la pièce (Map: id -> playerData)
+    // Liste du mobilier placé
+    this.furniture = [];
+    this.selectedFurniture = null;
+    this.placingItemType = null; // En cours de pose
+
+    // Joueurs dans la pièce
     this.players = new Map();
     this.localPlayerId = null;
+    this.isOwner = false;
 
-    // Cibles et chemins de déplacement
-    this.playerPaths = new Map(); // id -> [{gx, gy}, ...]
+    // Chemins de déplacement
+    this.playerPaths = new Map();
 
-    // Particules et effets
-    this.clickTarget = null; // {gx, gy, screenX, screenY, time}
-    this.ceilingFanAngle = 0;
+    // Effets visuels
+    this.clickTarget = null;
+    this.hoverGrid = { gx: 0, gy: 0 };
 
-    // Gestion du redimensionnement
+    // Zoom & Pan (Molette et Recentrage)
+    this.userZoom = 1.0;
+    this.panX = 0;
+    this.panY = 0;
+    this.isPanning = false;
+    this.lastMousePos = { x: 0, y: 0 };
+
+    // Initialisation
     this.scale = 1;
     this.offsetX = 0;
     this.offsetY = 0;
     this.resize();
     window.addEventListener('resize', () => this.resize());
 
-    // Événements de clic
-    this.canvas.addEventListener('click', (e) => this.handleClick(e));
+    // Événements Souris & Zoom
+    this.bindMouseEvents();
 
-    // Démarrage de la boucle d'animation
+    // Boucle de rendu
     this.lastTime = performance.now();
     requestAnimationFrame((t) => this.renderLoop(t));
   }
 
-  initCollisionGrid() {
-    const grid = Array.from({ length: 16 }, () => Array(16).fill(0));
-
-    // Définition des zones marchables (intérieur du salon, couloirs, entrée)
-    // 1. Allée principale centrale et tapis
-    for (let x = 4; x <= 13; x++) {
-      for (let y = 3; y <= 8; y++) {
-        grid[x][y] = 1;
+  // Reconstruction de la grille de collision en fonction des meubles
+  rebuildCollisionGrid() {
+    // 1. Réinitialiser la pièce vide : tout le sol intérieur est marchable
+    for (let x = 0; x < this.GRID_SIZE; x++) {
+      for (let y = 0; y < this.GRID_SIZE; y++) {
+        // Murs extérieurs et limites
+        if (x < 2 || y < 2 || x > 14 || y > 14) {
+          this.collisionGrid[x][y] = 0; // Mur
+        } else {
+          this.collisionGrid[x][y] = 1; // Sol libre
+        }
       }
     }
 
-    // 2. Espace devant la fenêtre et le bureau
-    for (let x = 2; x <= 5; x++) {
-      for (let y = 3; y <= 5; y++) {
-        grid[x][y] = 1;
+    // 2. Appliquer les collisions du mobilier placé
+    for (const item of this.furniture) {
+      if (item.isWalkable) continue; // Les tapis ne bloquent pas
+
+      const sx = item.sizeX || 1;
+      const sy = item.sizeY || 1;
+
+      for (let dx = 0; dx < sx; dx++) {
+        for (let dy = 0; dy < sy; dy++) {
+          const fx = item.gx + dx;
+          const fy = item.gy + dy;
+          if (fx >= 0 && fx < this.GRID_SIZE && fy >= 0 && fy < this.GRID_SIZE) {
+            this.collisionGrid[fx][fy] = 0; // Obstacle
+          }
+        }
       }
     }
+  }
 
-    // 3. Espace devant le meuble TV
-    for (let x = 3; x <= 5; x++) {
-      for (let y = 6; y <= 8; y++) {
-        grid[x][y] = 1;
-      }
-    }
+  setFurniture(furnitureList) {
+    this.furniture = furnitureList || [];
+    this.rebuildCollisionGrid();
+  }
 
-    // 4. Espace carrelage cuisine & entrée
-    for (let x = 8; x <= 13; x++) {
-      for (let y = 6; y <= 12; y++) {
-        grid[x][y] = 1;
-      }
-    }
+  setIsOwner(isOwner) {
+    this.isOwner = isOwner;
+  }
 
-    // Obstacles spécifiques / Meubles
-    // Canapé central (GX: 5..7, GY: 5..7)
-    grid[5][5] = 2; // Interactive Canapé
-    grid[6][5] = 2;
-    grid[5][6] = 2;
-    grid[6][6] = 0; // Table basse
+  setPlacingItem(itemType) {
+    this.placingItemType = itemType;
+    this.selectedFurniture = null;
+  }
 
-    // Bureau et ordinateur (GX: 2..3, GY: 2..3)
-    grid[2][2] = 0; // Tour & Écran
-    grid[3][2] = 3; // Chaise Bureau / Interactive
-    grid[2][3] = 0; // Plante
-
-    // Meuble TV (GX: 2..3, GY: 7..8)
-    grid[2][7] = 0;
-    grid[2][8] = 0;
-
-    // Comptoir Cuisine (GX: 9..13, GY: 12..14)
-    grid[9][12] = 4; // Interactive Cuisine
-    grid[10][12] = 4;
-    for (let x = 11; x <= 13; x++) {
-      for (let y = 11; y <= 13; y++) {
-        grid[x][y] = 0; // Meuble cuisine
-      }
-    }
-
-    return grid;
+  cancelPlacing() {
+    this.placingItemType = null;
   }
 
   resize() {
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight;
 
-    // Calcul du ratio pour afficher l'appartement centré
     const scaleX = this.canvas.width / this.V_WIDTH;
     const scaleY = this.canvas.height / this.V_HEIGHT;
-    this.scale = Math.max(scaleX, scaleY); // Cover ou adaptatif
+    this.scale = Math.min(scaleX, scaleY) * 1.05;
 
-    // Si l'écran est très large, préserver les proportions
-    if (this.scale * this.V_HEIGHT > this.canvas.height * 1.25) {
-      this.scale = Math.min(scaleX, scaleY) * 1.1;
-    }
-
-    this.offsetX = (this.canvas.width - this.V_WIDTH * this.scale) / 2;
-    this.offsetY = (this.canvas.height - this.V_HEIGHT * this.scale) / 2;
+    this.offsetX = (this.canvas.width - this.V_WIDTH * this.scale * this.userZoom) / 2 + this.panX;
+    this.offsetY = (this.canvas.height - this.V_HEIGHT * this.scale * this.userZoom) / 2 + this.panY;
   }
 
-  // Conversion Grille Isométrique -> Pixels dans l'image virtuelle
+  recenter() {
+    this.userZoom = 1.0;
+    this.panX = 0;
+    this.panY = 0;
+    this.resize();
+  }
+
+  bindMouseEvents() {
+    // Zoom avec la molette
+    this.canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+      const newZoom = Math.min(2.5, Math.max(0.65, this.userZoom * zoomFactor));
+
+      // Ajuster pour zoomer vers le curseur
+      const rect = this.canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      this.panX -= (mouseX - this.offsetX) * (newZoom / this.userZoom - 1);
+      this.panY -= (mouseY - this.offsetY) * (newZoom / this.userZoom - 1);
+      this.userZoom = newZoom;
+      this.resize();
+    }, { passive: false });
+
+    // Pan avec clic droit ou bouton du milieu
+    this.canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 1 || e.button === 2) {
+        this.isPanning = true;
+        this.lastMousePos = { x: e.clientX, y: e.clientY };
+        e.preventDefault();
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (this.isPanning) {
+        const dx = e.clientX - this.lastMousePos.x;
+        const dy = e.clientY - this.lastMousePos.y;
+        this.panX += dx;
+        this.panY += dy;
+        this.lastMousePos = { x: e.clientX, y: e.clientY };
+        this.resize();
+      } else {
+        // Suivi de la case sous la souris
+        const rect = this.canvas.getBoundingClientRect();
+        const { vx, vy } = this.windowToVirtual(e.clientX - rect.left, e.clientY - rect.top);
+        const { gx, gy } = this.screenToGrid(vx, vy);
+        this.hoverGrid = { gx: Math.round(gx), gy: Math.round(gy) };
+      }
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      if (e.button === 1 || e.button === 2) {
+        this.isPanning = false;
+      }
+    });
+
+    this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // Clic gauche (Déplacement ou Pose de meuble)
+    this.canvas.addEventListener('click', (e) => {
+      if (e.button !== 0) return;
+      this.handleClick(e);
+    });
+  }
+
+  // Transformations géométriques
   gridToScreen(gx, gy) {
     const x = this.ORIGIN_X + (gx * this.TILE_U_X) + (gy * this.TILE_V_X);
     const y = this.ORIGIN_Y + (gx * this.TILE_U_Y) + (gy * this.TILE_V_Y);
     return { x, y };
   }
 
-  // Conversion Pixels dans l'image virtuelle -> Grille Isométrique
   screenToGrid(x, y) {
     const dx = x - this.ORIGIN_X;
     const dy = y - this.ORIGIN_Y;
-
     const gy = ((dy / this.TILE_V_Y) + (dx / this.TILE_V_X)) / 2;
     const gx = ((dy / this.TILE_U_Y) - (dx / this.TILE_V_X)) / 2;
     return { gx, gy };
   }
 
-  // Conversion Coordonnées Écran (Window) -> Pixels image virtuelle
   windowToVirtual(wx, wy) {
-    const vx = (wx - this.offsetX) / this.scale;
-    const vy = (wy - this.offsetY) / this.scale;
+    const totalScale = this.scale * this.userZoom;
+    const vx = (wx - this.offsetX) / totalScale;
+    const vy = (wy - this.offsetY) / totalScale;
     return { vx, vy };
   }
 
-  // Conversion Pixels image virtuelle -> Coordonnées Écran (Window)
   virtualToWindow(vx, vy) {
-    const wx = this.offsetX + (vx * this.scale);
-    const wy = this.offsetY + (vy * this.scale);
+    const totalScale = this.scale * this.userZoom;
+    const wx = this.offsetX + (vx * totalScale);
+    const wy = this.offsetY + (vy * totalScale);
     return { wx, wy };
   }
 
   handleClick(e) {
     const rect = this.canvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
-
-    const { vx, vy } = this.windowToVirtual(clickX, clickY);
+    const { vx, vy } = this.windowToVirtual(e.clientX - rect.left, e.clientY - rect.top);
     const { gx, gy } = this.screenToGrid(vx, vy);
 
     const targetGx = Math.round(gx);
     const targetGy = Math.round(gy);
 
-    // Vérifier les limites de la pièce
     if (targetGx < 0 || targetGx >= this.GRID_SIZE || targetGy < 0 || targetGy >= this.GRID_SIZE) {
       return;
     }
 
-    const cellType = this.collisionGrid[targetGx][targetGy];
+    // 1. Si en mode Pose de Meuble (Propriétaire)
+    if (this.placingItemType && this.isOwner) {
+      const def = FURNITURE_CATALOG[this.placingItemType];
+      if (def) {
+        if (this.callbacks.onPlaceFurniture) {
+          this.callbacks.onPlaceFurniture({
+            type: def.id,
+            gx: targetGx,
+            gy: targetGy,
+            sizeX: def.sizeX,
+            sizeY: def.sizeY,
+            interactive: def.interactive,
+            isWalkable: def.isWalkable
+          });
+        }
+        this.placingItemType = null;
+      }
+      return;
+    }
 
-    // Trouver la cellule marchable la plus proche si l'utilisateur a cliqué sur un obstacle
+    // 2. Vérifier si un meuble existant a été cliqué
+    const clickedFurniture = this.furniture.find(f => {
+      const sx = f.sizeX || 1;
+      const sy = f.sizeY || 1;
+      return targetGx >= f.gx && targetGx < f.gx + sx && targetGy >= f.gy && targetGy < f.gy + sy;
+    });
+
+    if (clickedFurniture) {
+      if (this.isOwner && this.callbacks.onSelectFurniture) {
+        this.selectedFurniture = clickedFurniture;
+        this.callbacks.onSelectFurniture(clickedFurniture);
+      }
+
+      // Interaction avec le meuble (S'asseoir, Dormir, Travailler, Boire)
+      if (clickedFurniture.interactive && this.callbacks.onFurnitureInteract) {
+        this.callbacks.onFurnitureInteract(clickedFurniture);
+      }
+    } else {
+      this.selectedFurniture = null;
+      if (this.callbacks.onDeselectFurniture) {
+        this.callbacks.onDeselectFurniture();
+      }
+    }
+
+    // 3. Déplacement du joueur
     let finalGx = targetGx;
     let finalGy = targetGy;
 
-    if (cellType === 0) {
+    if (this.collisionGrid[targetGx][targetGy] === 0) {
       const nearest = this.findNearestWalkable(targetGx, targetGy);
       if (nearest) {
         finalGx = nearest.gx;
@@ -215,17 +311,15 @@ export class IsometricEngine {
       time: performance.now()
     };
 
-    if (this.onFloorClick) {
-      this.onFloorClick({
+    if (this.callbacks.onFloorClick) {
+      this.callbacks.onFloorClick({
         gx: finalGx,
         gy: finalGy,
         windowX: windowCoord.wx,
-        windowY: windowCoord.wy,
-        cellType: this.collisionGrid[finalGx][finalGy]
+        windowY: windowCoord.wy
       });
     }
 
-    // Déplacer le joueur local
     if (this.localPlayerId && this.players.has(this.localPlayerId)) {
       this.movePlayerTo(this.localPlayerId, finalGx, finalGy);
     }
@@ -248,7 +342,6 @@ export class IsometricEngine {
     return null;
   }
 
-  // Algorithme de recherche de chemin (Pathfinding A*)
   findPath(startGx, startGy, endGx, endGy) {
     const startX = Math.round(startGx);
     const startY = Math.round(startGy);
@@ -306,7 +399,6 @@ export class IsometricEngine {
       }
     }
 
-    // Ligne directe de secours si aucun obstacle bloquant
     return [{ gx: endGx, gy: endGy }];
   }
 
@@ -359,7 +451,7 @@ export class IsometricEngine {
     const player = this.players.get(playerId);
     if (player) {
       player.chatMessage = text;
-      player.chatTimer = performance.now() + 6000; // Visible pendant 6s
+      player.chatTimer = performance.now() + 6000;
     }
   }
 
@@ -367,7 +459,7 @@ export class IsometricEngine {
     const player = this.players.get(playerId);
     if (player) {
       player.currentAction = action;
-      if (action === 'sit') {
+      if (action === 'sit' || action === 'sleep') {
         player.isSitting = true;
         player.isMoving = false;
         this.playerPaths.delete(playerId);
@@ -377,9 +469,8 @@ export class IsometricEngine {
     }
   }
 
-  // Mise à jour de la physique et des déplacements
   update(delta) {
-    const speed = 3.5 * (delta / 1000); // Vitesse de marche en cases/seconde
+    const speed = 3.5 * (delta / 1000);
 
     for (const [id, player] of this.players) {
       const path = this.playerPaths.get(id);
@@ -390,7 +481,6 @@ export class IsometricEngine {
         const dy = nextTarget.gy - player.gy;
         const dist = Math.hypot(dx, dy);
 
-        // Orientation de l'avatar selon la trajectoire
         if (Math.abs(dx) > Math.abs(dy)) {
           player.direction = dx > 0 ? 'SW' : 'NE';
         } else {
@@ -405,15 +495,6 @@ export class IsometricEngine {
           if (path.length === 0) {
             player.isMoving = false;
             this.playerPaths.delete(id);
-
-            // Vérifier interaction avec l'objet atteint
-            const roundedGx = Math.round(player.gx);
-            const roundedGy = Math.round(player.gy);
-            const tile = this.collisionGrid[roundedGx]?.[roundedGy];
-            if (tile === 2) {
-              player.isSitting = true;
-              player.direction = 'SE';
-            }
           }
         } else {
           player.gx += (dx / dist) * speed;
@@ -423,9 +504,8 @@ export class IsometricEngine {
 
         player.animFrame += delta * 0.008;
 
-        // Émettre la synchronisation si c'est le joueur local
-        if (id === this.localPlayerId && this.onPlayerMoveStep) {
-          this.onPlayerMoveStep({
+        if (id === this.localPlayerId && this.callbacks.onPlayerMoveStep) {
+          this.callbacks.onPlayerMoveStep({
             gx: player.gx,
             gy: player.gy,
             direction: player.direction,
@@ -438,14 +518,12 @@ export class IsometricEngine {
         }
       }
 
-      // Nettoyer les bulles de chat expirées
       if (player.chatMessage && performance.now() > player.chatTimer) {
         player.chatMessage = null;
       }
     }
   }
 
-  // Boucle de rendu Canvas
   renderLoop(time) {
     const delta = Math.min(time - this.lastTime, 100);
     this.lastTime = time;
@@ -462,19 +540,20 @@ export class IsometricEngine {
 
     ctx.save();
     ctx.translate(this.offsetX, this.offsetY);
-    ctx.scale(this.scale, this.scale);
+    const totalScale = this.scale * this.userZoom;
+    ctx.scale(totalScale, totalScale);
 
-    // 1. Fond unifié assorti au décor (#ebebeb)
+    // 1. Fond studio unifié (#ebebeb)
     ctx.fillStyle = '#ebebeb';
-    ctx.fillRect(-this.offsetX / this.scale, -this.offsetY / this.scale, canvas.width / this.scale, canvas.height / this.scale);
+    ctx.fillRect(-this.offsetX / totalScale, -this.offsetY / totalScale, canvas.width / totalScale, canvas.height / totalScale);
 
-    // 2. Dessiner le décor de l'appartement (Fond Isométrique Pixel Art)
+    // 2. Décor de la pièce vide
     if (this.isDecorLoaded) {
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(this.decorImage, 0, 0, this.V_WIDTH, this.V_HEIGHT);
     }
 
-    // 2. Dessiner le marqueur de clic au sol
+    // 3. Marqueur de clic
     if (this.clickTarget) {
       const elapsed = performance.now() - this.clickTarget.time;
       if (elapsed < 800) {
@@ -484,14 +563,53 @@ export class IsometricEngine {
       }
     }
 
-    // 3. Tri des entités par profondeur isométrique (Y-sorting : gx + gy)
-    const sortedPlayers = Array.from(this.players.values()).sort((a, b) => {
-      return (a.gx + a.gy) - (b.gx + b.gy);
-    });
+    // 4. Tri en profondeur unifié (Y-sorting : Mobilier & Joueurs)
+    const renderEntities = [];
 
-    // 4. Dessiner chaque avatar
-    for (const player of sortedPlayers) {
-      this.drawAvatar(player);
+    // Ajouter le mobilier
+    for (const f of this.furniture) {
+      const pos = this.gridToScreen(f.gx, f.gy);
+      renderEntities.push({
+        type: 'furniture',
+        item: f,
+        depth: f.gx + f.gy + ((f.sizeX || 1) + (f.sizeY || 1)) * 0.5,
+        pos
+      });
+    }
+
+    // Ajouter les joueurs
+    for (const p of this.players.values()) {
+      const pos = this.gridToScreen(p.gx, p.gy);
+      renderEntities.push({
+        type: 'player',
+        player: p,
+        depth: p.gx + p.gy,
+        pos
+      });
+    }
+
+    // Trier par profondeur
+    renderEntities.sort((a, b) => a.depth - b.depth);
+
+    // Dessiner chaque entité dans l'ordre de profondeur
+    for (const entity of renderEntities) {
+      if (entity.type === 'furniture') {
+        const isSelected = this.selectedFurniture && this.selectedFurniture.id === entity.item.id;
+        renderFurniture(ctx, entity.item, entity.pos, isSelected);
+      } else if (entity.type === 'player') {
+        this.drawAvatar(entity.player);
+      }
+    }
+
+    // 5. Fantôme de meuble en cours de pose
+    if (this.placingItemType && this.isOwner && this.hoverGrid) {
+      const def = FURNITURE_CATALOG[this.placingItemType];
+      if (def) {
+        const hPos = this.gridToScreen(this.hoverGrid.gx, this.hoverGrid.gy);
+        ctx.globalAlpha = 0.65;
+        renderFurniture(ctx, { ...def, gx: this.hoverGrid.gx, gy: this.hoverGrid.gy }, hPos, true);
+        ctx.globalAlpha = 1.0;
+      }
     }
 
     ctx.restore();
@@ -517,7 +635,6 @@ export class IsometricEngine {
     ctx.restore();
   }
 
-  // Rendu complet d'un Avatar 2.5D Pixel Art Stylisé
   drawAvatar(player) {
     const { ctx } = this;
     const pos = this.gridToScreen(player.gx, player.gy);
@@ -541,7 +658,7 @@ export class IsometricEngine {
 
     ctx.save();
 
-    // 1. Ombre portée au sol
+    // Ombre
     ctx.beginPath();
     ctx.ellipse(x, y + 2, 14, 7, 0, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
@@ -549,7 +666,7 @@ export class IsometricEngine {
 
     const avatarBaseY = y - bounce;
 
-    // 2. Pieds & Chaussures
+    // Pieds
     ctx.fillStyle = '#111827';
     if (!isSitting) {
       ctx.fillRect(x - 6 + legSwing, avatarBaseY - 4, 5, 4);
@@ -559,7 +676,7 @@ export class IsometricEngine {
       ctx.fillRect(x + 2, avatarBaseY - 2, 6, 4);
     }
 
-    // 3. Pantalon / Jambes
+    // Pantalon
     ctx.fillStyle = pantsColor;
     if (!isSitting) {
       ctx.fillRect(x - 5 + (legSwing * 0.5), avatarBaseY - 14, 4, 10);
@@ -568,21 +685,19 @@ export class IsometricEngine {
       ctx.fillRect(x - 6, avatarBaseY - 10, 12, 8);
     }
 
-    // 4. Buste & Vêtement (Faso Dan Fani, Boubou ou Casual)
+    // Buste
     const torsoY = avatarBaseY - 28;
     ctx.fillStyle = shirtColor;
     ctx.fillRect(x - 8, torsoY, 16, 15);
 
-    // Motifs traditionnels Faso Dan Fani (rayures tissées africaines)
     if (outfitStyle === 'faso_dan_fani') {
-      ctx.fillStyle = '#dc2626'; // Liseré rouge
+      ctx.fillStyle = '#dc2626';
       ctx.fillRect(x - 4, torsoY, 2, 15);
-      ctx.fillStyle = '#facc15'; // Liseré or
+      ctx.fillStyle = '#facc15';
       ctx.fillRect(x + 2, torsoY, 2, 15);
-      ctx.fillStyle = '#16a34a'; // Liseré vert
+      ctx.fillStyle = '#16a34a';
       ctx.fillRect(x - 1, torsoY, 2, 15);
     } else if (outfitStyle === 'boubou') {
-      // Évasement du boubou
       ctx.beginPath();
       ctx.moveTo(x - 11, torsoY + 16);
       ctx.lineTo(x - 8, torsoY);
@@ -591,28 +706,23 @@ export class IsometricEngine {
       ctx.closePath();
       ctx.fillStyle = shirtColor;
       ctx.fill();
-      // Broderie dorée au col
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 1.5;
       ctx.strokeRect(x - 3, torsoY, 6, 7);
     }
 
-    // 5. Bras & Mains
+    // Bras
     ctx.fillStyle = skinColor;
     const armSwing = isMoving ? legSwing : 0;
     ctx.fillRect(x - 11, torsoY + 3 - armSwing, 3, 9);
     ctx.fillRect(x + 8, torsoY + 3 + armSwing, 3, 9);
 
-    // 6. Cou
-    ctx.fillStyle = skinColor;
+    // Cou & Tête
     ctx.fillRect(x - 2, torsoY - 4, 4, 4);
-
-    // 7. Tête & Visage
     const headY = torsoY - 18;
-    ctx.fillStyle = skinColor;
     ctx.fillRect(x - 7, headY, 14, 14);
 
-    // Yeux selon la direction
+    // Yeux
     ctx.fillStyle = '#ffffff';
     let eyeLeftX = x - 4;
     let eyeRightX = x + 1;
@@ -632,7 +742,7 @@ export class IsometricEngine {
       ctx.fillRect(eyeRightX + pupilOffsetX, headY + 6, 2, 2);
     }
 
-    // 8. Coiffure
+    // Coiffure
     ctx.fillStyle = hairColor;
     if (hairStyle === 'afro') {
       ctx.beginPath();
@@ -648,36 +758,41 @@ export class IsometricEngine {
       ctx.fillStyle = '#dc2626';
       ctx.fillRect(x - 2, headY - 6, 5, 4);
     } else {
-      // Short fade
       ctx.fillRect(x - 7, headY - 2, 14, 4);
     }
 
-    // 9. Étiquette du Joueur (Nom + Badge BF)
+    // Étiquette du Joueur (Nom + Badge Propriétaire ou BF)
     const labelY = headY - 12;
     const username = player.username || 'Joueur';
     ctx.font = '600 11px Outfit, sans-serif';
     const textWidth = ctx.measureText(username).width;
-    const badgeWidth = textWidth + 30;
+    const badgeWidth = textWidth + (player.isOwner ? 54 : 30);
 
     ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-    ctx.strokeStyle = player.id === this.localPlayerId ? 'rgba(250, 204, 21, 0.8)' : 'rgba(255, 255, 255, 0.2)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = player.isOwner ? '#facc15' : 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = player.isOwner ? 1.5 : 1;
     ctx.beginPath();
     ctx.roundRect(x - (badgeWidth / 2), labelY - 12, badgeWidth, 16, 4);
     ctx.fill();
     ctx.stroke();
 
-    // Mini drapeau BF (Rouge/Vert)
-    ctx.fillStyle = '#dc2626';
-    ctx.fillRect(x - (badgeWidth / 2) + 3, labelY - 9, 5, 10);
-    ctx.fillStyle = '#16a34a';
-    ctx.fillRect(x - (badgeWidth / 2) + 8, labelY - 9, 5, 10);
+    if (player.isOwner) {
+      ctx.fillStyle = '#facc15';
+      ctx.font = '700 8px sans-serif';
+      ctx.fillText('HÔTE', x - (badgeWidth / 2) + 4, labelY);
+      ctx.font = '600 11px Outfit, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(username, x - (badgeWidth / 2) + 32, labelY);
+    } else {
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(x - (badgeWidth / 2) + 3, labelY - 9, 5, 10);
+      ctx.fillStyle = '#16a34a';
+      ctx.fillRect(x - (badgeWidth / 2) + 8, labelY - 9, 5, 10);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(username, x - (badgeWidth / 2) + 17, labelY);
+    }
 
-    // Texte du pseudo
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(username, x - (badgeWidth / 2) + 17, labelY);
-
-    // 10. Bulle de dialogue si message de chat actif
+    // Bulle de dialogue
     if (player.chatMessage) {
       this.drawChatBubble(x, labelY - 16, player.chatMessage);
     }
@@ -689,7 +804,7 @@ export class IsometricEngine {
     const { ctx } = this;
     ctx.font = '500 12px Outfit, sans-serif';
     const metrics = ctx.measureText(text);
-    const bubbleWidth = Math.min(200, metrics.width + 18);
+    const bubbleWidth = Math.min(220, metrics.width + 18);
     const bubbleHeight = 22;
 
     ctx.save();
@@ -700,7 +815,6 @@ export class IsometricEngine {
     ctx.roundRect(x - (bubbleWidth / 2), y - bubbleHeight, bubbleWidth, bubbleHeight, 6);
     ctx.fill();
 
-    // Pointe de la bulle
     ctx.beginPath();
     ctx.moveTo(x - 4, y);
     ctx.lineTo(x + 4, y);

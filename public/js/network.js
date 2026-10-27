@@ -139,6 +139,12 @@ export class NetworkClient {
       case 'player_action':
         if (this.callbacks.onPlayerAction) this.callbacks.onPlayerAction(msg);
         break;
+      case 'furniture_sync':
+        if (this.callbacks.onFurnitureSync) this.callbacks.onFurnitureSync(msg.furniture);
+        break;
+      case 'owner_assigned':
+        if (this.callbacks.onOwnerAssigned) this.callbacks.onOwnerAssigned(msg.ownerId, msg.username);
+        break;
       case 'auth_error':
         this.logout();
         if (this.callbacks.onAuthError) this.callbacks.onAuthError(msg.message);
@@ -166,5 +172,21 @@ export class NetworkClient {
 
   sendAction(action) {
     this.send({ type: 'action', action });
+  }
+
+  sendFurniturePlace(item) {
+    this.send({ type: 'furniture_place', item });
+  }
+
+  sendFurnitureMove(id, gx, gy) {
+    this.send({ type: 'furniture_move', id, gx, gy });
+  }
+
+  sendFurnitureRemove(id) {
+    this.send({ type: 'furniture_remove', id });
+  }
+
+  sendFurnitureClear() {
+    this.send({ type: 'furniture_clear' });
   }
 }
