@@ -95,8 +95,13 @@
           <!-- Grille du catalogue d'objets -->
           <div id="catalog-grid" class="catalog-grid"></div>
 
-          <!-- Bouton Vider la salle -->
-          <button id="btn-clear-room" class="btn-clear-room">Vider toute la salle</button>
+          <div class="custom-actions-row">
+            <button id="btn-import-geo" class="btn-import-geo" title="Importer une géométrie Minecraft Bedrock JSON">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+              <span>+ Geo Minecraft (.json)</span>
+            </button>
+            <button id="btn-clear-room" class="btn-clear-room">Vider la salle</button>
+          </div>
         </div>
 
         <div id="custom-visitor-notice" class="visitor-notice hidden">
@@ -111,46 +116,74 @@
           <span class="needs-title">Besoins Vitaux</span>
           <span id="needs-overall-status" class="needs-tag">En forme</span>
         </div>
-        <div class="needs-bars-grid">
-          <!-- Faim -->
-          <div class="need-item">
-            <div class="need-label-row">
-              <span class="need-name">Faim</span>
-              <span id="need-val-hunger" class="need-percent">90%</span>
+        <!-- 4 Cercles de Besoins Alignés (Style Circulaire Demandé) -->
+        <div class="needs-circles-row">
+          <!-- 1. Faim -->
+          <div class="need-circle-card" id="card-need-hunger" data-need="hunger" title="Cliquer pour basculer pourcentage / icône">
+            <div class="circle-gauge">
+              <svg class="gauge-svg" width="54" height="54" viewBox="0 0 54 54">
+                <circle class="gauge-track" cx="27" cy="27" r="22"></circle>
+                <circle class="gauge-bar ring-hunger" id="gauge-ring-hunger" cx="27" cy="27" r="22" stroke-dasharray="138.2" stroke-dashoffset="13.8"></circle>
+              </svg>
+              <div class="gauge-center">
+                <svg class="need-svg-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 2v20M14 2v6a3 3 0 0 0 3 3h0a3 3 0 0 0 3-3V2M6 2v7a3 3 0 0 0 3 3v10M6 2a3 3 0 0 0 3 3 3 3 0 0 0 3-3"></path>
+                </svg>
+                <span class="need-percent-badge hidden" id="need-val-hunger">90%</span>
+              </div>
             </div>
-            <div class="need-track">
-              <div id="need-bar-hunger" class="need-fill bar-green" style="width: 90%;"></div>
-            </div>
+            <span class="need-name-label">Faim</span>
           </div>
-          <!-- Soif -->
-          <div class="need-item">
-            <div class="need-label-row">
-              <span class="need-name">Soif</span>
-              <span id="need-val-thirst" class="need-percent">85%</span>
+
+          <!-- 2. Soif -->
+          <div class="need-circle-card" id="card-need-thirst" data-need="thirst" title="Cliquer pour basculer pourcentage / icône">
+            <div class="circle-gauge">
+              <svg class="gauge-svg" width="54" height="54" viewBox="0 0 54 54">
+                <circle class="gauge-track" cx="27" cy="27" r="22"></circle>
+                <circle class="gauge-bar ring-thirst" id="gauge-ring-thirst" cx="27" cy="27" r="22" stroke-dasharray="138.2" stroke-dashoffset="20.7"></circle>
+              </svg>
+              <div class="gauge-center">
+                <svg class="need-svg-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                </svg>
+                <span class="need-percent-badge hidden" id="need-val-thirst">85%</span>
+              </div>
             </div>
-            <div class="need-track">
-              <div id="need-bar-thirst" class="need-fill bar-blue" style="width: 85%;"></div>
-            </div>
+            <span class="need-name-label">Soif</span>
           </div>
-          <!-- Énergie / Sommeil -->
-          <div class="need-item">
-            <div class="need-label-row">
-              <span class="need-name">Sommeil</span>
-              <span id="need-val-energy" class="need-percent">75%</span>
+
+          <!-- 3. Sommeil / Énergie -->
+          <div class="need-circle-card" id="card-need-energy" data-need="energy" title="Cliquer pour basculer pourcentage / icône">
+            <div class="circle-gauge">
+              <svg class="gauge-svg" width="54" height="54" viewBox="0 0 54 54">
+                <circle class="gauge-track" cx="27" cy="27" r="22"></circle>
+                <circle class="gauge-bar ring-energy" id="gauge-ring-energy" cx="27" cy="27" r="22" stroke-dasharray="138.2" stroke-dashoffset="34.5"></circle>
+              </svg>
+              <div class="gauge-center">
+                <svg class="need-svg-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+                <span class="need-percent-badge hidden" id="need-val-energy">75%</span>
+              </div>
             </div>
-            <div class="need-track">
-              <div id="need-bar-energy" class="need-fill bar-yellow" style="width: 75%;"></div>
-            </div>
+            <span class="need-name-label">Sommeil</span>
           </div>
-          <!-- Hygiène -->
-          <div class="need-item">
-            <div class="need-label-row">
-              <span class="need-name">Hygiène</span>
-              <span id="need-val-hygiene" class="need-percent">95%</span>
+
+          <!-- 4. Hygiène -->
+          <div class="need-circle-card" id="card-need-hygiene" data-need="hygiene" title="Cliquer pour basculer pourcentage / icône">
+            <div class="circle-gauge">
+              <svg class="gauge-svg" width="54" height="54" viewBox="0 0 54 54">
+                <circle class="gauge-track" cx="27" cy="27" r="22"></circle>
+                <circle class="gauge-bar ring-hygiene" id="gauge-ring-hygiene" cx="27" cy="27" r="22" stroke-dasharray="138.2" stroke-dashoffset="6.9"></circle>
+              </svg>
+              <div class="gauge-center">
+                <svg class="need-svg-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+                </svg>
+                <span class="need-percent-badge hidden" id="need-val-hygiene">95%</span>
+              </div>
             </div>
-            <div class="need-track">
-              <div id="need-bar-hygiene" class="need-fill bar-cyan" style="width: 95%;"></div>
-            </div>
+            <span class="need-name-label">Hygiène</span>
           </div>
         </div>
 
@@ -168,6 +201,67 @@
     <button id="btn-show-ui" class="btn-floating-pill hidden">
       Afficher l'interface (H)
     </button>
+
+
+    <!-- Modal Importation Géométrie Minecraft Bedrock JSON -->
+    <div id="modal-geo-import" class="modal-overlay hidden">
+      <div class="modal-card geo-modal-card">
+        <div class="modal-header">
+          <h2 class="modal-title">Importer Géométrie Minecraft (.json)</h2>
+          <button id="btn-close-geo-modal" class="btn-modal-close" title="Fermer">✕</button>
+        </div>
+        <div class="geo-modal-body">
+          <div class="geo-import-left">
+            <p class="geo-help-text">Compatible avec les fichiers de géométrie Minecraft Bedrock 1.12+ (blocs & entités avec <code>bones</code> et <code>cubes</code>).</p>
+            <div class="file-drop-area" id="geo-drop-zone">
+              <input type="file" id="geo-file-input" accept=".json,.geo.json" style="display:none;">
+              <button type="button" id="btn-browse-geo-file" class="btn-browse-file">Charger un fichier .geo.json</button>
+              <span id="geo-file-name" class="geo-file-name">Ou coller directement le JSON ci-dessous</span>
+            </div>
+            <textarea id="geo-json-textarea" class="geo-json-input" placeholder='{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": { "identifier": "geometry.mon_bloc" },
+      "bones": [
+        {
+          "name": "base",
+          "cubes": [{ "origin": [-8, 0, -8], "size": [16, 16, 16], "color": "#16a34a" }]
+        }
+      ]
+    }
+  ]
+}'></textarea>
+            <div class="geo-meta-fields">
+              <div class="form-group">
+                <label>Nom du Meuble</label>
+                <input type="text" id="geo-item-name" placeholder="Ex: Lampe de Chevet" value="Meuble Minecraft">
+              </div>
+              <div class="form-group">
+                <label>Catégorie</label>
+                <select id="geo-item-cat">
+                  <option value="salon">Salon</option>
+                  <option value="chambre">Chambre / Lit</option>
+                  <option value="cuisine">Cuisine</option>
+                  <option value="bureau">Bureau</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="geo-import-right">
+            <span class="preview-label">Aperçu 3D Isométrique Minecraft</span>
+            <div class="geo-preview-box">
+              <canvas id="geo-preview-canvas" width="200" height="200"></canvas>
+            </div>
+            <div id="geo-parse-status" class="geo-status-msg">Prêt pour importation</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-cancel-geo" class="btn-cancel">Annuler</button>
+          <button id="btn-confirm-geo-import" class="btn-primary" disabled>Ajouter au Mobilier</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Toasts / Notifications -->
     <div id="toast-container" class="toast-container"></div>

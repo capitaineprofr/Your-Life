@@ -1,3 +1,5 @@
+import { parseMinecraftGeometry, renderMinecraftModel } from './minecraft_geo.js';
+import { registerCustomFurniture } from './furniture.js';
 // --- Gestionnaire d'Interface Utilisateur (Agencement Utilisateur & Besoins) ---
 
 import { FURNITURE_CATALOG } from './furniture.js';
@@ -49,12 +51,28 @@ export class UIManager {
     this.btnDeselectFurniture = document.getElementById('btn-deselect-furniture');
     this.btnClearRoom = document.getElementById('btn-clear-room');
 
-    // 4. Besoins Naturels (Bas Droite)
-    this.needsBars = {
-      hunger: { bar: document.getElementById('need-bar-hunger'), val: document.getElementById('need-val-hunger') },
-      thirst: { bar: document.getElementById('need-bar-thirst'), val: document.getElementById('need-val-thirst') },
-      energy: { bar: document.getElementById('need-bar-energy'), val: document.getElementById('need-val-energy') },
-      hygiene: { bar: document.getElementById('need-bar-hygiene'), val: document.getElementById('need-val-hygiene') }
+    // 4. Besoins Circulaires (4 Cercles Alignés avec contours de progression)
+    this.needsGauges = {
+      hunger: {
+        ring: document.getElementById('gauge-ring-hunger'),
+        val: document.getElementById('need-val-hunger'),
+        card: document.getElementById('card-need-hunger')
+      },
+      thirst: {
+        ring: document.getElementById('gauge-ring-thirst'),
+        val: document.getElementById('need-val-thirst'),
+        card: document.getElementById('card-need-thirst')
+      },
+      energy: {
+        ring: document.getElementById('gauge-ring-energy'),
+        val: document.getElementById('need-val-energy'),
+        card: document.getElementById('card-need-energy')
+      },
+      hygiene: {
+        ring: document.getElementById('gauge-ring-hygiene'),
+        val: document.getElementById('need-val-hygiene'),
+        card: document.getElementById('card-need-hygiene')
+      }
     };
     this.needsStatus = document.getElementById('needs-overall-status');
 
@@ -135,6 +153,18 @@ export class UIManager {
         this.customSidebar.classList.toggle('collapsed');
       });
     }
+
+    // Clic sur les 4 cercles de besoins pour basculer icône / pourcentage précis
+    for (const [key, obj] of Object.entries(this.needsGauges)) {
+      if (obj.card) {
+        obj.card.addEventListener('click', () => {
+          obj.card.classList.toggle('show-percent');
+        });
+      }
+    }
+
+    // Initialisation de la modale d'importation géométrie Minecraft
+    this.initMinecraftGeoModal();
 
     // Onglets de catégories du catalogue
     const catBtns = document.querySelectorAll('.cat-btn');
@@ -336,19 +366,22 @@ export class UIManager {
   }
 
   updateNeedsDisplay() {
-    for (const [key, obj] of Object.entries(this.needsBars)) {
-      if (obj.bar && obj.val) {
+    const CIRCUMFERENCE = 138.23; // 2 * PI * 22
+
+    for (const [key, obj] of Object.entries(this.needsGauges)) {
+      if (obj.ring && obj.val) {
         const val = this.vitalNeeds[key];
         obj.val.textContent = `${val}%`;
-        obj.bar.style.width = `${val}%`;
 
-        // Changement de couleur selon le niveau
+        // Calcul du décalage de contour circulaire (100% -> 0, 0% -> 138.23)
+        const offset = CIRCUMFERENCE * (1 - (val / 100));
+        obj.ring.style.strokeDashoffset = `${offset}px`;
+
+        // Alerte critique si besoin sous les 25%
         if (val < 25) {
-          obj.bar.className = 'need-fill bar-red';
-        } else if (val < 50) {
-          obj.bar.className = 'need-fill bar-yellow';
+          obj.ring.classList.add('ring-critical');
         } else {
-          obj.bar.className = `need-fill bar-${key === 'thirst' ? 'blue' : (key === 'hygiene' ? 'cyan' : 'green')}`;
+          obj.ring.classList.remove('ring-critical');
         }
       }
     }
@@ -358,6 +391,117 @@ export class UIManager {
       if (avg > 70) this.needsStatus.textContent = 'En forme';
       else if (avg > 40) this.needsStatus.textContent = 'Fatigué';
       else this.needsStatus.textContent = 'Épuisé';
+    }
+  }
+
+  initMinecraftGeoModal() {
+    const btnOpen = document.getElementById('btn-import-geo');
+    const modal = document.getElementById('modal-geo-import');
+    const btnClose = document.getElementById('btn-close-geo-modal');
+    const btnCancel = document.getElementById('btn-cancel-geo');
+    const btnConfirm = document.getElementById('btn-confirm-geo-import');
+    const textarea = document.getElementById('geo-json-textarea');
+    const fileInput = document.getElementById('geo-file-input');
+    const btnBrowse = document.getElementById('btn-browse-geo-file');
+    const fileNameSpan = document.getElementById('geo-file-name');
+    const statusMsg = document.getElementById('geo-parse-status');
+    const canvas = document.getElementById('geo-preview-canvas');
+    const ctx = canvas ? canvas.getContext('2d') : null;
+    const nameInput = document.getElementById('geo-item-name');
+    const catSelect = document.getElementById('geo-item-cat');
+
+    if (!btnOpen || !modal) return;
+
+    let currentParsedModel = null;
+
+    const renderPreview = () => {
+      if (!ctx || !canvas) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (currentParsedModel) {
+        renderMinecraftModel(ctx, currentParsedModel, { x: 100, y: 130 }, { scale: 2.2 });
+      }
+    };
+
+    const validateJson = (jsonString) => {
+      if (!jsonString || !jsonString.trim()) {
+        currentParsedModel = null;
+        statusMsg.textContent = 'Prêt pour importation';
+        statusMsg.className = 'geo-status-msg';
+        btnConfirm.disabled = true;
+        renderPreview();
+        return;
+      }
+
+      const parsed = parseMinecraftGeometry(jsonString);
+      if (parsed && parsed.cubes && parsed.cubes.length > 0) {
+        currentParsedModel = parsed;
+        statusMsg.textContent = `Géométrie valide (${parsed.cubes.length} cubes détectés)`;
+        statusMsg.className = 'geo-status-msg success';
+        btnConfirm.disabled = false;
+        renderPreview();
+      } else {
+        currentParsedModel = null;
+        statusMsg.textContent = 'Erreur : format JSON non reconnu';
+        statusMsg.className = 'geo-status-msg error';
+        btnConfirm.disabled = true;
+        renderPreview();
+      }
+    };
+
+    btnOpen.addEventListener('click', () => {
+      modal.classList.remove('hidden');
+      validateJson(textarea.value);
+    });
+
+    const closeModal = () => modal.classList.add('hidden');
+    if (btnClose) btnClose.addEventListener('click', closeModal);
+    if (btnCancel) btnCancel.addEventListener('click', closeModal);
+
+    if (btnBrowse && fileInput) {
+      btnBrowse.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          fileNameSpan.textContent = file.name;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            textarea.value = ev.target.result;
+            validateJson(ev.target.result);
+          };
+          reader.readAsText(file);
+        }
+      });
+    }
+
+    if (textarea) {
+      textarea.addEventListener('input', () => validateJson(textarea.value));
+    }
+
+    if (btnConfirm) {
+      btnConfirm.addEventListener('click', () => {
+        if (!currentParsedModel) return;
+        const rawName = nameInput.value.trim() || 'Meuble Minecraft';
+        const cat = catSelect.value || 'salon';
+        const customId = 'custom_' + Date.now();
+
+        // Enregistrer la géométrie dans le catalogue
+        registerCustomFurniture({
+          id: customId,
+          name: rawName,
+          category: cat,
+          sizeX: 1,
+          sizeY: 1,
+          price: 25000,
+          interactive: null,
+          isWalkable: false,
+          geoJson: currentParsedModel
+        });
+
+        // Actualiser l'affichage du catalogue
+        this.renderCatalog();
+        this.showToast(`Meuble "${rawName}" ajouté au catalogue !`, 'success');
+        closeModal();
+      });
     }
   }
 

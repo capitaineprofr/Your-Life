@@ -618,18 +618,18 @@ export class IsometricEngine {
   drawClickMarker(x, y, elapsed) {
     const { ctx } = this;
     const progress = elapsed / 800;
-    const radius = 18 * (1 + progress * 0.4);
+    const radius = 28 * (1 + progress * 0.4);
     const alpha = Math.max(0, 1 - progress);
 
     ctx.save();
     ctx.beginPath();
     ctx.ellipse(x, y, radius, radius * 0.5, 0, 0, Math.PI * 2);
     ctx.strokeStyle = `rgba(250, 204, 21, ${alpha})`;
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 3;
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
     ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
     ctx.fill();
     ctx.restore();
@@ -653,148 +653,177 @@ export class IsometricEngine {
     const hairColor = avatar.hairColor || '#1a110b';
     const outfitStyle = avatar.outfitStyle || 'faso_dan_fani';
 
-    const bounce = isMoving ? Math.abs(Math.sin(player.animFrame * 8)) * 3 : 0;
-    const legSwing = isMoving ? Math.sin(player.animFrame * 8) * 5 : 0;
+    // Animation de marche isométrique
+    const bounce = isMoving ? Math.abs(Math.sin(player.animFrame * 8)) * 5 : 0;
+    const legSwing = isMoving ? Math.sin(player.animFrame * 8) * 8 : 0;
+    const armSwing = isMoving ? legSwing : 0;
 
     ctx.save();
 
-    // Ombre
+    // 1. Ombre portée au sol
     ctx.beginPath();
-    ctx.ellipse(x, y + 2, 14, 7, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y + 2, 24, 11, 0, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
     ctx.fill();
 
     const avatarBaseY = y - bounce;
 
-    // Pieds
-    ctx.fillStyle = '#111827';
+    // 2. Pieds & Chaussures (Style voxel Minecraft 3D)
+    ctx.fillStyle = '#0f172a';
     if (!isSitting) {
-      ctx.fillRect(x - 6 + legSwing, avatarBaseY - 4, 5, 4);
-      ctx.fillRect(x + 1 - legSwing, avatarBaseY - 4, 5, 4);
+      ctx.fillRect(x - 11 + legSwing, avatarBaseY - 6, 9, 6);
+      ctx.fillRect(x + 2 - legSwing, avatarBaseY - 6, 9, 6);
     } else {
-      ctx.fillRect(x - 5, avatarBaseY - 2, 6, 4);
-      ctx.fillRect(x + 2, avatarBaseY - 2, 6, 4);
+      ctx.fillRect(x - 9, avatarBaseY - 4, 9, 6);
+      ctx.fillRect(x + 2, avatarBaseY - 4, 9, 6);
     }
 
-    // Pantalon
+    // 3. Jambes & Pantalon
     ctx.fillStyle = pantsColor;
     if (!isSitting) {
-      ctx.fillRect(x - 5 + (legSwing * 0.5), avatarBaseY - 14, 4, 10);
-      ctx.fillRect(x + 1 - (legSwing * 0.5), avatarBaseY - 14, 4, 10);
+      ctx.fillRect(x - 10 + (legSwing * 0.6), avatarBaseY - 26, 8, 20);
+      ctx.fillRect(x + 2 - (legSwing * 0.6), avatarBaseY - 26, 8, 20);
     } else {
-      ctx.fillRect(x - 6, avatarBaseY - 10, 12, 8);
+      ctx.fillRect(x - 10, avatarBaseY - 20, 20, 16);
     }
 
-    // Buste
-    const torsoY = avatarBaseY - 28;
+    // 4. Torse / Buste (Proportions Minecraft : 26x28px avec épaisseur 3D)
+    const torsoY = avatarBaseY - 54;
     ctx.fillStyle = shirtColor;
-    ctx.fillRect(x - 8, torsoY, 16, 15);
+    ctx.fillRect(x - 13, torsoY, 26, 28);
+    // Légère bordure d'ombrage Minecraft
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x - 13, torsoY, 26, 28);
 
+    // Motifs de Tenues Sahéliennes
     if (outfitStyle === 'faso_dan_fani') {
       ctx.fillStyle = '#dc2626';
-      ctx.fillRect(x - 4, torsoY, 2, 15);
+      ctx.fillRect(x - 7, torsoY, 4, 28);
       ctx.fillStyle = '#facc15';
-      ctx.fillRect(x + 2, torsoY, 2, 15);
+      ctx.fillRect(x + 3, torsoY, 4, 28);
       ctx.fillStyle = '#16a34a';
-      ctx.fillRect(x - 1, torsoY, 2, 15);
+      ctx.fillRect(x - 2, torsoY, 4, 28);
     } else if (outfitStyle === 'boubou') {
       ctx.beginPath();
-      ctx.moveTo(x - 11, torsoY + 16);
-      ctx.lineTo(x - 8, torsoY);
-      ctx.lineTo(x + 8, torsoY);
-      ctx.lineTo(x + 11, torsoY + 16);
+      ctx.moveTo(x - 18, torsoY + 28);
+      ctx.lineTo(x - 13, torsoY);
+      ctx.lineTo(x + 13, torsoY);
+      ctx.lineTo(x + 18, torsoY + 28);
       ctx.closePath();
       ctx.fillStyle = shirtColor;
       ctx.fill();
       ctx.strokeStyle = '#facc15';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(x - 3, torsoY, 6, 7);
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x - 5, torsoY + 3, 10, 12);
     }
 
-    // Bras
+    // 5. Bras (Style Minecraft : 8x24px de chaque côté avec balancement)
     ctx.fillStyle = skinColor;
-    const armSwing = isMoving ? legSwing : 0;
-    ctx.fillRect(x - 11, torsoY + 3 - armSwing, 3, 9);
-    ctx.fillRect(x + 8, torsoY + 3 + armSwing, 3, 9);
+    ctx.fillRect(x - 19, torsoY + 3 - armSwing, 6, 22);
+    ctx.fillStyle = shirtColor;
+    ctx.fillRect(x - 19, torsoY + 3 - armSwing, 6, 8); // Mancheron
 
-    // Cou & Tête
-    ctx.fillRect(x - 2, torsoY - 4, 4, 4);
-    const headY = torsoY - 18;
-    ctx.fillRect(x - 7, headY, 14, 14);
+    ctx.fillStyle = skinColor;
+    ctx.fillRect(x + 13, torsoY + 3 + armSwing, 6, 22);
+    ctx.fillStyle = shirtColor;
+    ctx.fillRect(x + 13, torsoY + 3 + armSwing, 6, 8); // Mancheron
 
-    // Yeux
+    // 6. Cou & Tête (Cube Minecraft 24x24px)
+    ctx.fillStyle = skinColor;
+    ctx.fillRect(x - 3, torsoY - 6, 6, 6);
+
+    const headY = torsoY - 30;
+    ctx.fillRect(x - 12, headY, 24, 24);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.fillRect(x - 12, headY, 24, 4);
+
+    // Yeux (Pixel-art Minecraft)
     ctx.fillStyle = '#ffffff';
-    let eyeLeftX = x - 4;
-    let eyeRightX = x + 1;
+    let eyeLeftX = x - 7;
+    let eyeRightX = x + 2;
     let pupilOffsetX = 0;
 
     if (dir === 'SE') {
-      eyeLeftX = x - 2; eyeRightX = x + 3; pupilOffsetX = 1;
+      eyeLeftX = x - 4; eyeRightX = x + 4; pupilOffsetX = 1;
     } else if (dir === 'SW') {
-      eyeLeftX = x - 5; eyeRightX = x; pupilOffsetX = -1;
+      eyeLeftX = x - 8; eyeRightX = x; pupilOffsetX = -1;
     }
 
-    if (dir === 'SE' || dir === 'SW') {
-      ctx.fillRect(eyeLeftX, headY + 5, 3, 3);
-      ctx.fillRect(eyeRightX, headY + 5, 3, 3);
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(eyeLeftX + pupilOffsetX, headY + 6, 2, 2);
-      ctx.fillRect(eyeRightX + pupilOffsetX, headY + 6, 2, 2);
-    }
+    ctx.fillRect(eyeLeftX, headY + 8, 5, 5);
+    ctx.fillRect(eyeRightX, headY + 8, 5, 5);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(eyeLeftX + pupilOffsetX + 1, headY + 9, 3, 4);
+    ctx.fillRect(eyeRightX + pupilOffsetX + 1, headY + 9, 3, 4);
 
-    // Coiffure
+    // 7. Coiffure & Accessoires
     ctx.fillStyle = hairColor;
     if (hairStyle === 'afro') {
       ctx.beginPath();
-      ctx.arc(x, headY + 2, 9, 0, Math.PI * 2);
+      ctx.arc(x, headY + 2, 16, 0, Math.PI * 2);
       ctx.fill();
     } else if (hairStyle === 'dreads') {
-      ctx.fillRect(x - 8, headY - 3, 16, 6);
-      ctx.fillRect(x - 9, headY + 2, 3, 10);
-      ctx.fillRect(x + 6, headY + 2, 3, 10);
+      ctx.fillRect(x - 14, headY - 5, 28, 9);
+      ctx.fillRect(x - 16, headY + 3, 5, 18);
+      ctx.fillRect(x + 11, headY + 3, 5, 18);
     } else if (hairStyle === 'foulard') {
       ctx.fillStyle = '#f59e0b';
-      ctx.fillRect(x - 8, headY - 4, 16, 7);
+      ctx.fillRect(x - 14, headY - 6, 28, 12);
       ctx.fillStyle = '#dc2626';
-      ctx.fillRect(x - 2, headY - 6, 5, 4);
+      ctx.fillRect(x - 3, headY - 9, 7, 6);
     } else {
-      ctx.fillRect(x - 7, headY - 2, 14, 4);
+      ctx.fillRect(x - 13, headY - 4, 26, 8);
     }
 
-    // Étiquette du Joueur (Nom + Badge Propriétaire ou BF)
-    const labelY = headY - 12;
-    const username = player.username || 'Joueur';
-    ctx.font = '600 11px Outfit, sans-serif';
-    const textWidth = ctx.measureText(username).width;
-    const badgeWidth = textWidth + (player.isOwner ? 54 : 30);
+    // 8. Prisme Plumbob animé au-dessus de la tête (Style Les Sims)
+    const plumbobY = headY - 20 + Math.sin(performance.now() * 0.005) * 3;
+    ctx.beginPath();
+    ctx.moveTo(x, plumbobY - 8);
+    ctx.lineTo(x + 5, plumbobY);
+    ctx.lineTo(x, plumbobY + 8);
+    ctx.lineTo(x - 5, plumbobY);
+    ctx.closePath();
+    ctx.fillStyle = '#22c55e';
+    ctx.fill();
+    ctx.strokeStyle = '#15803d';
+    ctx.lineWidth = 1;
+    ctx.stroke();
 
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-    ctx.strokeStyle = player.isOwner ? '#facc15' : 'rgba(255, 255, 255, 0.2)';
+    // 9. Étiquette du Joueur (Nom + Badge Propriétaire ou Drapeau BF)
+    const labelY = plumbobY - 10;
+    const username = player.username || 'Joueur';
+    ctx.font = '600 12px Outfit, sans-serif';
+    const textWidth = ctx.measureText(username).width;
+    const badgeWidth = textWidth + (player.isOwner ? 58 : 34);
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+    ctx.strokeStyle = player.isOwner ? '#facc15' : 'rgba(255, 255, 255, 0.25)';
     ctx.lineWidth = player.isOwner ? 1.5 : 1;
     ctx.beginPath();
-    ctx.roundRect(x - (badgeWidth / 2), labelY - 12, badgeWidth, 16, 4);
+    ctx.roundRect(x - (badgeWidth / 2), labelY - 14, badgeWidth, 18, 4);
     ctx.fill();
     ctx.stroke();
 
     if (player.isOwner) {
       ctx.fillStyle = '#facc15';
-      ctx.font = '700 8px sans-serif';
-      ctx.fillText('HÔTE', x - (badgeWidth / 2) + 4, labelY);
-      ctx.font = '600 11px Outfit, sans-serif';
+      ctx.font = '700 9px sans-serif';
+      ctx.fillText('HÔTE', x - (badgeWidth / 2) + 5, labelY);
+      ctx.font = '600 12px Outfit, sans-serif';
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(username, x - (badgeWidth / 2) + 32, labelY);
+      ctx.fillText(username, x - (badgeWidth / 2) + 36, labelY);
     } else {
       ctx.fillStyle = '#dc2626';
-      ctx.fillRect(x - (badgeWidth / 2) + 3, labelY - 9, 5, 10);
+      ctx.fillRect(x - (badgeWidth / 2) + 4, labelY - 10, 5, 11);
       ctx.fillStyle = '#16a34a';
-      ctx.fillRect(x - (badgeWidth / 2) + 8, labelY - 9, 5, 10);
+      ctx.fillRect(x - (badgeWidth / 2) + 9, labelY - 10, 5, 11);
+      ctx.font = '600 12px Outfit, sans-serif';
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(username, x - (badgeWidth / 2) + 17, labelY);
+      ctx.fillText(username, x - (badgeWidth / 2) + 20, labelY);
     }
 
-    // Bulle de dialogue
+    // Bulle de dialogue si message récent
     if (player.chatMessage) {
-      this.drawChatBubble(x, labelY - 16, player.chatMessage);
+      this.drawChatBubble(x, labelY - 24, player.chatMessage);
     }
 
     ctx.restore();

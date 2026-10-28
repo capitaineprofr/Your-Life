@@ -557,13 +557,43 @@ html, body {
   background: rgba(217, 119, 6, 0.45);
 }
 
+.custom-actions-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.btn-import-geo {
+  flex: 1.2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  color: #6ee7b7;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-import-geo:hover {
+  background: rgba(16, 185, 129, 0.3);
+  border-color: #34d399;
+  transform: translateY(-1px);
+}
+
 .btn-clear-room {
+  flex: 0.8;
   background: rgba(220, 38, 38, 0.15);
   border: 1px solid rgba(220, 38, 38, 0.4);
   color: #fca5a5;
   font-size: 10px;
   font-weight: 600;
-  padding: 6px;
+  padding: 6px 8px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 0.15s;
@@ -623,49 +653,128 @@ html, body {
   font-weight: 600;
 }
 
-.needs-bars-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+/* 4 Cercles de Besoins Vitaux Alignés Horizontalement */
+.needs-circles-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
+  padding: 4px 2px;
 }
 
-.need-item {
+.need-circle-card {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.15s ease;
 }
 
-.need-label-row {
+.need-circle-card:hover {
+  transform: translateY(-2px);
+}
+
+.need-circle-card:active {
+  transform: scale(0.95);
+}
+
+/* Jauge Circulaire SVG */
+.circle-gauge {
+  position: relative;
+  width: 54px;
+  height: 54px;
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.65);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.gauge-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 54px;
+  height: 54px;
+  transform: rotate(-90deg); /* Début du cercle en haut (12h) */
+}
+
+.gauge-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 4px;
+}
+
+.gauge-bar {
+  fill: none;
+  stroke-width: 4.5px;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.4s ease, stroke 0.3s ease;
+}
+
+/* Couleurs des contours circulaires */
+.ring-hunger { stroke: #ea580c; }
+.ring-thirst { stroke: #0284c7; }
+.ring-energy { stroke: #eab308; }
+.ring-hygiene { stroke: #10b981; }
+.ring-critical { stroke: #ef4444 !important; filter: drop-shadow(0 0 4px #ef4444); }
+
+/* Centre du cercle (Icône ou Pourcentage) */
+.gauge-center {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  transition: all 0.2s ease;
+}
+
+.need-svg-icon {
+  color: #f8fafc;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.need-percent-badge {
+  font-size: 11px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.3px;
+  font-family: var(--font-main);
+  animation: fadeInPop 0.2s ease;
+}
+
+/* État actif : Bascule au clic vers le pourcentage précis */
+.need-circle-card.show-percent .need-svg-icon {
+  display: none;
+}
+
+.need-circle-card.show-percent .need-percent-badge {
+  display: block !important;
+}
+
+.need-circle-card.show-percent .gauge-center {
+  background: rgba(217, 119, 6, 0.25);
+  border: 1px solid rgba(250, 204, 21, 0.4);
+}
+
+.need-name-label {
   font-size: 10px;
-  color: #cbd5e1;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.2px;
 }
 
-.need-percent {
-  font-weight: 700;
+@keyframes fadeInPop {
+  0% { transform: scale(0.7); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
-
-.need-track {
-  width: 100%;
-  height: 6px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 3px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.need-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.4s ease;
-}
-
-.bar-green { background: linear-gradient(90deg, #16a34a, #4ade80); }
-.bar-blue { background: linear-gradient(90deg, #2563eb, #38bdf8); }
-.bar-yellow { background: linear-gradient(90deg, #ca8a04, #facc15); }
-.bar-cyan { background: linear-gradient(90deg, #0d9488, #2dd4bf); }
-.bar-red { background: linear-gradient(90deg, #dc2626, #f87171); }
 
 .quick-needs-actions {
   display: flex;
@@ -1004,4 +1113,144 @@ html, body {
   .widget-bottom-right-needs {
     width: 220px;
   }
+}
+
+
+/* ========================================================
+   MODAL IMPORTATION GÉOMÉTRIE MINECRAFT BEDROCK JSON
+   ======================================================== */
+.geo-modal-card {
+  width: 680px;
+  max-width: 95vw;
+}
+
+.geo-modal-body {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+}
+
+.geo-import-left {
+  flex: 1.2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.geo-import-right {
+  flex: 0.8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.geo-help-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.geo-help-text code {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2px 4px;
+  border-radius: 3px;
+  color: #38bdf8;
+}
+
+.file-drop-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-browse-file {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px dashed rgba(255, 255, 255, 0.3);
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-browse-file:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
+.geo-file-name {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.geo-json-input {
+  width: 100%;
+  height: 150px;
+  background: rgba(10, 15, 29, 0.85);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: #38bdf8;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  padding: 8px;
+  resize: vertical;
+  outline: none;
+}
+
+.geo-json-input:focus {
+  border-color: var(--primary);
+}
+
+.geo-meta-fields {
+  display: flex;
+  gap: 10px;
+}
+
+.geo-meta-fields .form-group {
+  flex: 1;
+}
+
+.geo-meta-fields input, .geo-meta-fields select {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  color: #ffffff;
+  font-size: 11px;
+}
+
+.geo-preview-box {
+  width: 200px;
+  height: 200px;
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.geo-status-msg {
+  font-size: 10px;
+  color: #94a3b8;
+  text-align: center;
+  min-height: 16px;
+}
+
+.geo-status-msg.error {
+  color: #f87171;
+}
+
+.geo-status-msg.success {
+  color: #4ade80;
 }
