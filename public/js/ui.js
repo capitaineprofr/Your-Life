@@ -24,6 +24,7 @@ export class UIManager {
     this.btnRecenter = document.getElementById('btn-recenter');
     this.btnZoomIn = document.getElementById('btn-zoom-in');
     this.btnZoomOut = document.getElementById('btn-zoom-out');
+    this.btnToggleView = document.getElementById('btn-toggle-view');
 
     // 1. Profil & Solde (Haut Gauche)
     this.hudUsername = document.getElementById('hud-username');
@@ -47,6 +48,7 @@ export class UIManager {
     this.catalogGrid = document.getElementById('catalog-grid');
     this.furnitureSelectionBar = document.getElementById('furniture-selection-bar');
     this.selectedItemName = document.getElementById('selected-item-name');
+    this.btnRotateFurniture = document.getElementById('btn-rotate-furniture');
     this.btnDeleteFurniture = document.getElementById('btn-delete-furniture');
     this.btnDeselectFurniture = document.getElementById('btn-deselect-furniture');
     this.btnClearRoom = document.getElementById('btn-clear-room');
@@ -127,6 +129,14 @@ export class UIManager {
         if (this.handlers.onRecenter) this.handlers.onRecenter();
       });
     }
+    if (this.btnToggleView) {
+      this.btnToggleView.addEventListener('click', () => {
+        if (this.handlers.onToggleView) {
+          const mode = this.handlers.onToggleView();
+          this.btnToggleView.textContent = mode === 'architectural' ? 'Vue Sims Architecture' : 'Vue Décor Photo';
+        }
+      });
+    }
 
     // Masquage global de l'UI
     if (this.btnToggleUi) this.btnToggleUi.addEventListener('click', () => this.toggleAllUI());
@@ -178,6 +188,13 @@ export class UIManager {
     });
 
     // Actions sur meuble sélectionné
+    if (this.btnRotateFurniture) {
+      this.btnRotateFurniture.addEventListener('click', () => {
+        if (this.handlers.onRotateSelectedFurniture) {
+          this.handlers.onRotateSelectedFurniture();
+        }
+      });
+    }
     if (this.btnDeleteFurniture) {
       this.btnDeleteFurniture.addEventListener('click', () => {
         if (this.handlers.onDeleteSelectedFurniture) {

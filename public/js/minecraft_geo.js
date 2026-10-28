@@ -226,12 +226,12 @@ export function renderMinecraftCube(ctx, cube, basePos, options = {}) {
 export function renderMinecraftModel(ctx, model, basePos, options = {}) {
   if (!model || !model.cubes || model.cubes.length === 0) return;
 
-  const { isSelected = false } = options;
+  const { isSelected = false, rotation = 0, scale = MC_CONFIG.SCALE_FACTOR } = options;
 
   ctx.save();
 
-  // Ombre portée au sol façon Minecraft
-  const shadowRadius = 24 * (options.scale || MC_CONFIG.SCALE_FACTOR);
+  // Ombre portée au sol façon Minecraft (orientée selon rotation)
+  const shadowRadius = 26 * scale;
   ctx.beginPath();
   ctx.ellipse(basePos.x, basePos.y + 2, shadowRadius, shadowRadius * 0.5, 0, 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
@@ -248,17 +248,65 @@ export function renderMinecraftModel(ctx, model, basePos, options = {}) {
     ctx.setLineDash([]);
   }
 
+  // Calcul du centre géométrique du modèle pour la rotation
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const c of model.cubes) {
+    if (c.origin[0] < minX) minX = c.origin[0];
+    if (c.origin[0] + c.size[0] > maxX) maxX = c.origin[0] + c.size[0];
+    if (c.origin[2] < minZ) minZ = c.origin[2];
+    if (c.origin[2] + c.size[2] > maxZ) maxZ = c.origin[2] + c.size[2];
+  }
+  const midX = (minX + maxX) / 2;
+  const midZ = (minZ + maxZ) / 2;
+
+  // Transformation des cubes selon la rotation (0°, 90°, 180°, 270°)
+  const transformedCubes = model.cubes.map(cube => {
+    if (!rotation || rotation === 0) return cube;
+
+    const ox0 = cube.origin[0] - midX;
+    const ox1 = cube.origin[0] + cube.size[0] - midX;
+    const oz0 = cube.origin[2] - midZ;
+    const oz1 = cube.origin[2] + cube.size[2] - midZ;
+
+    let rx0, rx1, rz0, rz1;
+    let lColor = cube.leftColor || adjustBrightness(cube.color || '#b45309', 0.85);
+    let rColor = cube.rightColor || adjustBrightness(cube.color || '#b45309', 0.65);
+
+    if (rotation === 90) {
+      rx0 = -oz1; rx1 = -oz0;
+      rz0 = ox0;  rz1 = ox1;
+      const tmp = lColor; lColor = rColor; rColor = tmp;
+    } else if (rotation === 180) {
+      rx0 = -ox1; rx1 = -ox0;
+      rz0 = -oz1; rz1 = -oz0;
+    } else if (rotation === 270) {
+      rx0 = oz0;  rx1 = oz1;
+      rz0 = -ox1; rz1 = -ox0;
+      const tmp = lColor; lColor = rColor; rColor = tmp;
+    } else {
+      rx0 = ox0; rx1 = ox1;
+      rz0 = oz0; rz1 = oz1;
+    }
+
+    return {
+      ...cube,
+      origin: [Math.min(rx0, rx1) + midX, cube.origin[1], Math.min(rz0, rz1) + midZ],
+      size: [Math.abs(rx1 - rx0), cube.size[1], Math.abs(rz1 - rz0)],
+      leftColor: lColor,
+      rightColor: rColor
+    };
+  });
+
   // Tri en profondeur des cubes (Painter's algorithm pour l'isométrie 3D)
-  // Les cubes à l'arrière (faible U + V, faible Y) sont dessinés avant les cubes au premier plan
-  const sortedCubes = [...model.cubes].sort((a, b) => {
+  transformedCubes.sort((a, b) => {
     const depthA = (a.origin[0] + a.size[0] * 0.5) + (a.origin[2] + a.size[2] * 0.5) + (a.origin[1] * 0.05);
     const depthB = (b.origin[0] + b.size[0] * 0.5) + (b.origin[2] + b.size[2] * 0.5) + (b.origin[1] * 0.05);
     return depthA - depthB;
   });
 
   // Dessin de chaque cube
-  for (const cube of sortedCubes) {
-    renderMinecraftCube(ctx, cube, basePos, options);
+  for (const cube of transformedCubes) {
+    renderMinecraftCube(ctx, cube, basePos, { ...options, scale });
   }
 
   ctx.restore();
@@ -299,6 +347,32 @@ export class MinecraftGeometryRegistry {
 // CATALOGUE DES MODÈLES MINECRAFT 3D ISOMÉTRIQUES INTÉGRÉS
 // Chaque meuble est constitué de blocs & sous-blocs aux dimensions Minecraft (16 unités = 1 bloc)
 // =========================================================================
+
+// =========================================================================
+// TABLE DU MAIRE / LEADER DE JERRY'S NATIONS (geometry.mayor_table)
+// Format Bedrock extrait directement de l'addon Jerry's Nations (8 cubes)
+// =========================================================================
+MinecraftGeometryRegistry.register('geometry.mayor_table', {
+  identifier: 'geometry.mayor_table',
+  cubes: [
+    // 1. Plateau principal en bois noble sculpté
+    { origin: [-15, 12, -8], size: [30, 2, 16], color: '#854d0e', topColor: '#b45309', leftColor: '#78350f', rightColor: '#54300e' },
+    // 2. Pied gauche robuste (pilier colonial)
+    { origin: [-14, 0, -4], size: [7, 12, 8], color: '#54300e', topColor: '#78350f', leftColor: '#451a03', rightColor: '#361402' },
+    // 3. Pied droit robuste (pilier colonial)
+    { origin: [7, 0, -4], size: [7, 12, 8], color: '#54300e', topColor: '#78350f', leftColor: '#451a03', rightColor: '#361402' },
+    // 4. Grand Livre de la Colonie (Base cuir rouge impérial)
+    { origin: [0, 14.6, -5], size: [7, 2, 10], color: '#991b1b', topColor: '#dc2626', leftColor: '#7f1d1d', rightColor: '#450a0a' },
+    // 5. Pages de parchemin et traités
+    { origin: [0, 16.1, -5], size: [7, 1, 10], color: '#fef08a', topColor: '#fef9c3', leftColor: '#eab308', rightColor: '#ca8a04' },
+    // 6. Reliure et dorures du grand livre
+    { origin: [6, 15, -5], size: [1, 1, 10], color: '#ca8a04', topColor: '#facc15', leftColor: '#a16207', rightColor: '#713f12' },
+    // 7. Plume d'oie & encrier de signature
+    { origin: [-5, 14, -2], size: [1, 1, 5], color: '#e2e8f0', topColor: '#ffffff', leftColor: '#cbd5e1', rightColor: '#94a3b8' },
+    // 8. Couverture inférieure du traité
+    { origin: [0, 13.9, -5], size: [7, 1, 10], color: '#7f1d1d', topColor: '#991b1b', leftColor: '#450a0a', rightColor: '#300505' }
+  ]
+});
 
 // 1. Canapé 3 Places (geometry.sofa_3p)
 MinecraftGeometryRegistry.register('geometry.sofa_3p', {

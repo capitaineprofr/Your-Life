@@ -186,6 +186,10 @@ export class NetworkClient {
     this.send({ type: 'furniture_remove', id });
   }
 
+  sendFurnitureRotate(id) {
+    this.send({ type: 'furniture_rotate', id });
+  }
+
   sendFurnitureClear() {
     this.send({ type: 'furniture_clear' });
   }

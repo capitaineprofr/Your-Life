@@ -164,14 +164,7 @@ let roomOwnerId = null;
 
 // Mobilier dynamique de la pièce (Géré et modifiable par le Propriétaire)
 let roomFurniture = [
-  { id: 'f_bed', type: 'bed_double', gx: 4, gy: 3, sizeX: 2, sizeY: 3, interactive: 'sleep' },
-  { id: 'f_sofa', type: 'sofa_3p', gx: 7, gy: 6, sizeX: 3, sizeY: 1, interactive: 'sit' },
-  { id: 'f_table', type: 'table_coffee', gx: 8, gy: 8, sizeX: 2, sizeY: 1, interactive: null },
-  { id: 'f_rug', type: 'rug', gx: 6, gy: 7, sizeX: 3, sizeY: 2, interactive: null, isWalkable: true },
-  { id: 'f_tv', type: 'tv_stand', gx: 10, gy: 9, sizeX: 2, sizeY: 1, interactive: 'watch_tv' },
-  { id: 'f_desk', type: 'desk_pc', gx: 3, gy: 7, sizeX: 2, sizeY: 1, interactive: 'work' },
-  { id: 'f_fridge', type: 'fridge', gx: 12, gy: 5, sizeX: 1, sizeY: 1, interactive: 'drink' },
-  { id: 'f_sink', type: 'kitchen_sink', gx: 12, gy: 7, sizeX: 2, sizeY: 1, interactive: 'cook' }
+  { id: 'f_leader_table', type: 'mayor_table', gx: 6, gy: 6, sizeX: 2, sizeY: 1, rotation: 0, interactive: 'work' }
 ];
 
 // Point de spawn initial par défaut
@@ -338,12 +331,24 @@ wss.on('connection', (ws) => {
           gy: Math.round(msg.item.gy),
           sizeX: msg.item.sizeX || 1,
           sizeY: msg.item.sizeY || 1,
+          rotation: msg.item.rotation || 0,
           interactive: msg.item.interactive || null,
           isWalkable: !!msg.item.isWalkable
         };
 
         roomFurniture.push(newItem);
         broadcast({ type: 'furniture_sync', furniture: roomFurniture });
+      }
+
+      else if (msg.type === 'furniture_rotate') {
+        const player = connectedPlayers.get(ws);
+        if (!player || player.id !== roomOwnerId) return;
+
+        const item = roomFurniture.find(f => f.id === msg.id);
+        if (item) {
+          item.rotation = ((item.rotation || 0) + 90) % 360;
+          broadcast({ type: 'furniture_sync', furniture: roomFurniture });
+        }
       }
 
       else if (msg.type === 'furniture_move') {

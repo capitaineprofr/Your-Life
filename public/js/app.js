@@ -90,6 +90,9 @@ class YourLifeApp {
       onDeselectFurniture: () => {
         this.ui.hideFurnitureSelection();
       },
+      onRotateFurniture: (id) => {
+        this.network.sendFurnitureRotate(id);
+      },
       onFurnitureInteract: (item) => this.handleFurnitureInteraction(item)
     });
 
@@ -128,6 +131,20 @@ class YourLifeApp {
       },
       onCancelPlacing: () => {
         this.engine.cancelPlacing();
+      },
+      onToggleView: () => {
+        const mode = this.engine.toggleViewMode();
+        this.ui.showToast(mode === 'architectural' ? 'Mode Architecture Sims activé' : 'Mode Décor Photo activé', 2000);
+        return mode;
+      },
+      onRotateSelectedFurniture: () => {
+        if (this.engine.selectedFurniture) {
+          this.engine.rotateSelectedFurniture();
+          this.ui.showToast('Meuble pivoté de 90°', 1200);
+        }
+      },
+      onDeselectFurniture: () => {
+        this.engine.selectedFurniture = null;
       },
       onDeleteSelectedFurniture: () => {
         if (this.engine.selectedFurniture) {

@@ -2,171 +2,16 @@
 import { MinecraftGeometryRegistry, renderMinecraftModel, MC_CONFIG } from './minecraft_geo.js';
 
 export const FURNITURE_CATALOG = {
-  sofa_3p: {
-    id: 'sofa_3p',
-    geoId: 'geometry.sofa_3p',
-    name: 'Canapé 3 Places (Faso Dan Fani)',
-    category: 'salon',
-    sizeX: 3,
+  mayor_table: {
+    id: 'mayor_table',
+    geoId: 'geometry.mayor_table',
+    name: "Table de Leader (Jerry's Nations)",
+    category: 'bureau',
+    sizeX: 2,
     sizeY: 1,
-    height: 52,
+    height: 48,
     price: 35000,
-    interactive: 'sit'
-  },
-  sofa_2p: {
-    id: 'sofa_2p',
-    geoId: 'geometry.sofa_2p',
-    name: 'Canapé 2 Places',
-    category: 'salon',
-    sizeX: 2,
-    sizeY: 1,
-    height: 48,
-    price: 25000,
-    interactive: 'sit'
-  },
-  armchair: {
-    id: 'armchair',
-    geoId: 'geometry.armchair',
-    name: 'Fauteuil Confort',
-    category: 'salon',
-    sizeX: 1,
-    sizeY: 1,
-    height: 46,
-    price: 15000,
-    interactive: 'sit'
-  },
-  table_coffee: {
-    id: 'table_coffee',
-    geoId: 'geometry.table_coffee',
-    name: 'Table Basse Bois',
-    category: 'salon',
-    sizeX: 2,
-    sizeY: 1,
-    height: 24,
-    price: 12000,
-    interactive: null
-  },
-  tv_stand: {
-    id: 'tv_stand',
-    geoId: 'geometry.tv_stand',
-    name: 'Meuble TV & Écran Plat',
-    category: 'salon',
-    sizeX: 2,
-    sizeY: 1,
-    height: 60,
-    price: 45000,
-    interactive: 'watch_tv'
-  },
-  rug: {
-    id: 'rug',
-    geoId: 'geometry.rug',
-    name: 'Tapis Faso Dan Fani',
-    category: 'salon',
-    sizeX: 3,
-    sizeY: 2,
-    height: 2,
-    price: 18000,
-    interactive: null,
-    isWalkable: true
-  },
-  bed_double: {
-    id: 'bed_double',
-    geoId: 'geometry.bed_double',
-    name: 'Grand Lit Double',
-    category: 'chambre',
-    sizeX: 2,
-    sizeY: 3,
-    height: 45,
-    price: 60000,
-    interactive: 'sleep'
-  },
-  bed_single: {
-    id: 'bed_single',
-    geoId: 'geometry.bed_single',
-    name: 'Lit Simple',
-    category: 'chambre',
-    sizeX: 1,
-    sizeY: 2,
-    height: 40,
-    price: 30000,
-    interactive: 'sleep'
-  },
-  wardrobe: {
-    id: 'wardrobe',
-    geoId: 'geometry.wardrobe',
-    name: 'Armoire Penderie',
-    category: 'chambre',
-    sizeX: 2,
-    sizeY: 1,
-    height: 85,
-    price: 40000,
-    interactive: null
-  },
-  bookshelf: {
-    id: 'bookshelf',
-    geoId: 'geometry.bookshelf',
-    name: 'Bibliothèque Haute',
-    category: 'bureau',
-    sizeX: 2,
-    sizeY: 1,
-    height: 80,
-    price: 28000,
-    interactive: null
-  },
-  desk_pc: {
-    id: 'desk_pc',
-    geoId: 'geometry.desk_pc',
-    name: 'Bureau Informatique',
-    category: 'bureau',
-    sizeX: 2,
-    sizeY: 1,
-    height: 65,
-    price: 55000,
     interactive: 'work'
-  },
-  chair: {
-    id: 'chair',
-    geoId: 'geometry.chair',
-    name: 'Chaise Bureau',
-    category: 'bureau',
-    sizeX: 1,
-    sizeY: 1,
-    height: 44,
-    price: 8000,
-    interactive: 'sit'
-  },
-  fridge: {
-    id: 'fridge',
-    geoId: 'geometry.fridge',
-    name: 'Réfrigérateur Moderne',
-    category: 'cuisine',
-    sizeX: 1,
-    sizeY: 1,
-    height: 85,
-    price: 50000,
-    interactive: 'drink'
-  },
-  kitchen_sink: {
-    id: 'kitchen_sink',
-    geoId: 'geometry.kitchen_sink',
-    name: 'Évier & Plan Cuisine',
-    category: 'cuisine',
-    sizeX: 2,
-    sizeY: 1,
-    height: 56,
-    price: 42000,
-    interactive: 'cook'
-  },
-  table_dining: {
-    id: 'table_dining',
-    geoId: 'geometry.table_dining',
-    name: 'Table à Manger',
-    category: 'cuisine',
-    sizeX: 2,
-    sizeY: 2,
-    height: 48,
-    price: 32000,
-    interactive: null
   }
 };
 
@@ -210,6 +55,7 @@ export function renderFurniture(ctx, item, screenPos, isSelected = false) {
     // Rendu haute fidélité Minecraft 3D
     renderMinecraftModel(ctx, model, screenPos, {
       isSelected,
+      rotation: item.rotation || 0,
       scale: MC_CONFIG.SCALE_FACTOR
     });
   } else {
