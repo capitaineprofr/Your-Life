@@ -27,15 +27,19 @@ export class UIManager {
     this.btnToggleView = document.getElementById('btn-toggle-view');
 
     // 1. Profil & Solde (Haut Gauche)
+    this.profileWidget = document.getElementById('hud-profile-widget');
     this.hudUsername = document.getElementById('hud-username');
     this.hudRoleBadge = document.getElementById('hud-role-badge');
     this.playerFcfa = document.getElementById('player-fcfa');
     this.hudAvatarPreview = document.getElementById('hud-avatar-preview');
     this.btnLogout = document.getElementById('btn-logout');
+    this.btnToggleProfileSize = document.getElementById('btn-toggle-profile-size');
+    this.tabToggleProfile = document.getElementById('tab-toggle-profile');
 
     // 2. Tchat Sidebar (Gauche)
     this.chatSidebar = document.getElementById('hud-chat-sidebar');
     this.btnToggleChatSize = document.getElementById('btn-toggle-chat-size');
+    this.tabToggleChat = document.getElementById('tab-toggle-chat');
     this.chatLog = document.getElementById('chat-messages-log');
     this.chatForm = document.getElementById('chat-form');
     this.chatInput = document.getElementById('chat-input');
@@ -163,30 +167,47 @@ export class UIManager {
       }
     });
 
-    // Réduction / Extension des barres latérales droites (Animation par la droite)
-    if (this.btnToggleChatSize) {
-      this.btnToggleChatSize.addEventListener('click', () => {
-        this.chatSidebar.classList.toggle('collapsed');
+    // Réduction / Extension des barres latérales gauches (Animation vers la gauche)
+    if (this.btnToggleProfileSize && this.profileWidget) {
+      this.btnToggleProfileSize.addEventListener('click', () => {
+        this.profileWidget.classList.add('collapsed');
+      });
+    }
+    if (this.tabToggleProfile && this.profileWidget) {
+      this.tabToggleProfile.addEventListener('click', () => {
+        this.profileWidget.classList.remove('collapsed');
       });
     }
 
-    if (this.btnToggleCustomSize) {
+    if (this.btnToggleChatSize && this.chatSidebar) {
+      this.btnToggleChatSize.addEventListener('click', () => {
+        this.chatSidebar.classList.add('collapsed');
+      });
+    }
+    if (this.tabToggleChat && this.chatSidebar) {
+      this.tabToggleChat.addEventListener('click', () => {
+        this.chatSidebar.classList.remove('collapsed');
+      });
+    }
+
+    // Réduction / Extension des barres latérales droites (Animation vers la droite)
+    if (this.btnToggleCustomSize && this.customSidebar) {
       this.btnToggleCustomSize.addEventListener('click', () => {
         this.customSidebar.classList.add('collapsed');
       });
     }
-    if (this.tabToggleCustom) {
+    if (this.tabToggleCustom && this.customSidebar) {
       this.tabToggleCustom.addEventListener('click', () => {
         this.customSidebar.classList.remove('collapsed');
       });
     }
 
-    if (this.btnToggleNeedsSize) {
+    if (this.btnToggleNeedsSize && this.needsWidget) {
       this.btnToggleNeedsSize.addEventListener('click', () => {
         this.needsWidget.classList.add('collapsed');
       });
     }
-    if (this.tabToggleNeeds) {
+    if (this.tabToggleNeeds && this.needsWidget) {
       this.tabToggleNeeds.addEventListener('click', () => {
         this.needsWidget.classList.remove('collapsed');
       });

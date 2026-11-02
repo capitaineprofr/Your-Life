@@ -32,8 +32,14 @@
     <!-- HUD Modulaire & Séparé (Agencement Demandé par l'Utilisateur) -->
     <div id="hud-root" class="hud-root">
 
-      <!-- 1. En haut à gauche : Solde & Profil -->
+      <!-- 1. En haut à gauche : Solde & Profil (Rétractable sur le côté gauche) -->
       <div id="hud-profile-widget" class="floating-widget widget-top-left-profile">
+        <!-- Onglet de réouverture sur le bord gauche -->
+        <button class="panel-edge-tab-left" id="tab-toggle-profile" title="Ouvrir Profil">
+          <span class="tab-arrow">›</span>
+          <span class="tab-text">Profil</span>
+        </button>
+
         <div class="profile-header">
           <div class="sims-portrait-wrapper">
             <div class="sims-plumbob" title="Humeur Excellente"></div>
@@ -44,6 +50,7 @@
               <span id="hud-username" class="profile-username">Joueur</span>
               <span id="hud-role-badge" class="badge-role">Hôte</span>
               <button id="btn-logout" class="btn-logout" title="Déconnexion">Quitter</button>
+              <button id="btn-toggle-profile-size" class="btn-sidebar-toggle" title="Ranger vers la gauche">‹</button>
             </div>
             <div class="profile-currency-row">
               <span class="currency-tag">SOLDE</span>
@@ -63,11 +70,17 @@
         <button id="btn-toggle-ui" class="btn-tool-icon btn-hide-ui" title="Masquer l'interface (Touche H)">Masquer UI [H]</button>
       </div>
 
-      <!-- 3. Sur la gauche : Panneau de Tchat Vertical Dédié -->
+      <!-- 3. Sur la gauche : Panneau de Tchat Vertical Dédié (Rétractable sur le côté gauche) -->
       <div id="hud-chat-sidebar" class="floating-widget widget-left-chat">
+        <!-- Onglet de réouverture sur le bord gauche -->
+        <button class="panel-edge-tab-left" id="tab-toggle-chat" title="Ouvrir Discussion">
+          <span class="tab-arrow">›</span>
+          <span class="tab-text">Tchat</span>
+        </button>
+
         <div class="sidebar-header">
           <span class="sidebar-title">Discussion Salon</span>
-          <button id="btn-toggle-chat-size" class="btn-sidebar-toggle" title="Réduire">_</button>
+          <button id="btn-toggle-chat-size" class="btn-sidebar-toggle" title="Ranger vers la gauche">‹</button>
         </div>
         <div id="chat-messages-log" class="chat-sidebar-log"></div>
         <form id="chat-form" class="chat-sidebar-form">

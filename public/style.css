@@ -1,25 +1,44 @@
-/* --- Variables & Thème Visuel Sahel Chic --- */
+/* --- Variables & Thème Visuel Sahel Chic Épuré (Non Intrusif) --- */
 :root {
-  --bg-dark: #0d1117;
+  --bg-dark: #0a0e17;
   --bg-studio: #ebebeb;
-  --bg-glass: rgba(15, 23, 42, 0.88);
-  --border-glass: rgba(245, 158, 11, 0.3);
-  --border-subtle: rgba(255, 255, 255, 0.12);
+  --bg-glass: rgba(18, 22, 33, 0.88);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.08);
   --primary: #d97706;
   --primary-hover: #b45309;
-  --primary-glow: rgba(217, 119, 6, 0.45);
-  --accent-red: #dc2626;
-  --accent-green: #16a34a;
-  --accent-gold: #facc15;
+  --primary-glow: rgba(217, 119, 6, 0.35);
+  --accent-red: #ef4444;
+  --accent-green: #22c55e;
+  --accent-gold: #f59e0b;
   --plumbob-green: #22c55e;
-  --text-main: #f8fafc;
+  --text-main: #f1f5f9;
   --text-muted: #94a3b8;
   --font-main: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-retro: 'Press Start 2P', monospace;
-  --radius-lg: 14px;
+  --radius-lg: 12px;
   --radius-md: 8px;
   --radius-sm: 5px;
-  --shadow-float: 0 10px 25px -4px rgba(0, 0, 0, 0.6);
+  --shadow-float: 0 8px 24px -2px rgba(0, 0, 0, 0.45);
+}
+
+/* Scrollbars ultra-fines et discrètes */
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 158, 11, 0.4);
 }
 
 *, *::before, *::after {
@@ -140,6 +159,11 @@ html, body {
   padding: 8px 14px 8px 10px;
   border-radius: var(--radius-lg);
   border: 1px solid rgba(245, 158, 11, 0.35);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+}
+
+.widget-top-left-profile.collapsed {
+  transform: translateX(calc(-100% - 20px));
 }
 
 .profile-header {
@@ -326,12 +350,11 @@ html, body {
   flex-direction: column;
   padding: 10px;
   gap: 8px;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
 }
 
 .widget-left-chat.collapsed {
-  height: 40px;
-  bottom: auto;
-  overflow: hidden;
+  transform: translateX(calc(-100% - 20px));
 }
 
 .sidebar-header {
@@ -697,7 +720,7 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: rgba(15, 23, 42, 0.92);
+  background: rgba(18, 22, 33, 0.92);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(217, 119, 6, 0.6);
@@ -723,6 +746,10 @@ html, body {
 
 #tab-toggle-needs {
   bottom: 8px;
+}
+
+#tab-toggle-map-sidebar {
+  top: 14px;
 }
 
 .panel-edge-tab .tab-arrow {
@@ -752,7 +779,78 @@ html, body {
 }
 
 .widget-right-custom.collapsed .panel-edge-tab,
-.widget-bottom-right-needs.collapsed .panel-edge-tab {
+.widget-bottom-right-needs.collapsed .panel-edge-tab,
+.map-sidebar.collapsed .panel-edge-tab {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* --- Onglets Rétractables Bords d'Écran (Réouverture par la Gauche) --- */
+.panel-edge-tab-left {
+  position: absolute;
+  right: -82px;
+  width: 82px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(18, 22, 33, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(217, 119, 6, 0.6);
+  border-left: none;
+  border-radius: 0 10px 10px 0;
+  color: var(--accent-gold);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  box-shadow: 4px 2px 14px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  z-index: 60;
+}
+
+#tab-toggle-profile {
+  top: 6px;
+}
+
+#tab-toggle-chat {
+  top: 8px;
+}
+
+.panel-edge-tab-left .tab-arrow {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.panel-edge-tab-left .tab-text {
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.panel-edge-tab-left:hover {
+  background: rgba(30, 41, 59, 0.98);
+  border-color: #facc15;
+  color: #facc15;
+}
+
+.panel-edge-tab-left:hover .tab-arrow {
+  transform: translateX(3px);
+}
+
+.panel-edge-tab-left:active {
+  transform: scale(0.96);
+}
+
+.widget-top-left-profile.collapsed .panel-edge-tab-left,
+.widget-left-chat.collapsed .panel-edge-tab-left {
   opacity: 1;
   pointer-events: auto;
 }
@@ -1429,60 +1527,72 @@ html, body {
   cursor: grabbing;
 }
 
-/* Barre Supérieure de la Ville */
+/* Barre Supérieure de la Ville Style Google Maps */
 .map-topbar {
   position: absolute;
-  top: 16px;
-  left: 20px;
-  right: 20px;
+  top: 14px;
+  left: 16px;
+  right: 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 18px;
-  background: rgba(15, 23, 42, 0.88);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(245, 158, 11, 0.4);
+  padding: 8px 16px;
+  background: rgba(18, 22, 33, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-float);
-  z-index: 10;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  z-index: 20;
   pointer-events: auto;
 }
 
 .map-city-identity {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
-.flag-icon {
-  font-size: 24px;
+.flag-badge-svg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 .map-city-title {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.5px;
   color: #fef08a;
+  line-height: 1.2;
 }
 
 .map-city-coords {
-  font-size: 11px;
+  font-size: 10px;
   color: #94a3b8;
   font-weight: 500;
+}
+
+.map-topbar-center {
+  display: flex;
+  align-items: center;
 }
 
 .map-weather-pill {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(0, 0, 0, 0.35);
-  padding: 6px 14px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 5px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .weather-temp {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   color: #f97316;
 }
@@ -1492,19 +1602,25 @@ html, body {
   color: #cbd5e1;
 }
 
+.map-topbar-right {
+  display: flex;
+  align-items: center;
+}
+
 .btn-close-map {
-  background: rgba(239, 68, 68, 0.2);
-  border: 1px solid rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
   color: #fca5a5;
   font-weight: 700;
-  padding: 8px 14px;
+  font-size: 11px;
+  padding: 6px 14px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-close-map:hover {
-  background: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.35);
   color: #ffffff;
   border-color: #ef4444;
 }
@@ -1513,17 +1629,18 @@ html, body {
 .map-camera-controls {
   position: absolute;
   bottom: 24px;
-  left: 24px;
+  left: 20px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  z-index: 10;
+  z-index: 20;
 }
 
 .map-ctrl-btn {
-  background: rgba(15, 23, 42, 0.88);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(18, 22, 33, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: #ffffff;
   font-weight: 700;
   font-size: 14px;
@@ -1534,12 +1651,12 @@ html, body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
   transition: all 0.15s;
 }
 
 .map-ctrl-btn:hover {
-  background: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.25);
   border-color: var(--accent-gold);
   color: #fef08a;
 }
@@ -1550,38 +1667,62 @@ html, body {
   font-size: 11px;
 }
 
-/* Panneau Latéral Droit de la Carte */
+.btn-mode-3d {
+  width: auto;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.btn-mode-3d.active {
+  background: rgba(245, 158, 11, 0.35);
+  border-color: #facc15;
+  color: #ffffff;
+}
+
+/* Panneau Latéral Droit de la Carte (Rétractable) */
 .map-sidebar {
   position: absolute;
-  top: 80px;
-  right: 20px;
-  bottom: 24px;
-  width: 340px;
-  background: rgba(15, 23, 42, 0.92);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(245, 158, 11, 0.35);
+  top: 72px;
+  right: 16px;
+  bottom: 20px;
+  width: 330px;
+  background: rgba(18, 22, 33, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-float);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  z-index: 10;
+  overflow: visible;
+  z-index: 20;
   pointer-events: auto;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+}
+
+.map-sidebar.collapsed {
+  transform: translateX(calc(100% + 24px));
 }
 
 .sidebar-header-box {
-  padding: 14px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .sidebar-map-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: #ffffff;
 }
 
 .sidebar-map-subtitle {
-  font-size: 11px;
+  font-size: 10px;
   color: #94a3b8;
 }
 
@@ -1589,7 +1730,7 @@ html, body {
 .districts-list {
   flex: 1;
   overflow-y: auto;
-  padding: 10px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1599,33 +1740,40 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .district-item:hover {
-  background: rgba(245, 158, 11, 0.15);
-  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
 }
 
 .district-item.active {
-  background: rgba(245, 158, 11, 0.25);
+  background: rgba(245, 158, 11, 0.2);
   border-color: var(--accent-gold);
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
 }
 
 .district-item-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .district-icon {
-  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--accent-gold);
 }
 
 .district-texts {
