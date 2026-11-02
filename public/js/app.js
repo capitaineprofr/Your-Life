@@ -3,6 +3,7 @@
 import { IsometricEngine } from './engine.js';
 import { NetworkClient } from './network.js';
 import { UIManager } from './ui.js';
+import { ouagaMap } from './ouaga_map_3d.js';
 
 class YourLifeApp {
   constructor() {
@@ -168,6 +169,9 @@ class YourLifeApp {
         this.engine.recenter();
         this.ui.showToast('Vue recentrée', 1500);
       },
+      onOpenMap: () => {
+        ouagaMap.open();
+      },
       onAction: async (action) => {
         if (action === 'work') {
           const res = await this.network.workPC();
@@ -186,6 +190,14 @@ class YourLifeApp {
           this.ui.replenishNeed('energy', 10);
           this.network.sendChat('*danse au rythme du Coupé-Décalé et Warba*');
         }
+      }
+    });
+
+    // Initialisation Carte 3D de Ouagadougou
+    ouagaMap.init({
+      onTravel: (district) => {
+        this.ui.showToast(`Déplacement en taxi vers ${district.name} (-${district.taxiFare} FCFA)...`, 4000);
+        this.network.sendChat(`*prend un taxi vert vers le quartier ${district.name}*`);
       }
     });
 

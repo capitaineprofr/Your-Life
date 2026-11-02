@@ -21,6 +21,7 @@ export class UIManager {
     this.btnToggleUi = document.getElementById('btn-toggle-ui');
     this.btnShowUi = document.getElementById('btn-show-ui');
     this.btnRecenter = document.getElementById('btn-recenter');
+    this.btnOpenMap = document.getElementById('btn-open-map');
     this.btnZoomIn = document.getElementById('btn-zoom-in');
     this.btnZoomOut = document.getElementById('btn-zoom-out');
     this.btnToggleView = document.getElementById('btn-toggle-view');
@@ -132,6 +133,11 @@ export class UIManager {
     if (this.btnRecenter) {
       this.btnRecenter.addEventListener('click', () => {
         if (this.handlers.onRecenter) this.handlers.onRecenter();
+      });
+    }
+    if (this.btnOpenMap) {
+      this.btnOpenMap.addEventListener('click', () => {
+        if (this.handlers.onOpenMap) this.handlers.onOpenMap();
       });
     }
     if (this.btnToggleView) {
