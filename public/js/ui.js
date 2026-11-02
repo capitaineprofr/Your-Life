@@ -1,8 +1,7 @@
 import { parseMinecraftGeometry, renderMinecraftModel } from './minecraft_geo.js';
-import { registerCustomFurniture } from './furniture.js';
+import { registerCustomFurniture, FURNITURE_CATALOG } from './furniture.js';
+import { parseBedrockJSON, BedrockGeometryRegistry } from './bedrock_3d.js';
 // --- Gestionnaire d'Interface Utilisateur (Agencement Utilisateur & Besoins) ---
-
-import { FURNITURE_CATALOG } from './furniture.js';
 
 export class UIManager {
   constructor(handlers = {}) {
@@ -444,6 +443,9 @@ export class UIManager {
     const fileInput = document.getElementById('geo-file-input');
     const btnBrowse = document.getElementById('btn-browse-geo-file');
     const fileNameSpan = document.getElementById('geo-file-name');
+    const textureInput = document.getElementById('geo-texture-input');
+    const btnBrowseTexture = document.getElementById('btn-browse-geo-texture');
+    const textureNameSpan = document.getElementById('geo-texture-name');
     const statusMsg = document.getElementById('geo-parse-status');
     const canvas = document.getElementById('geo-preview-canvas');
     const ctx = canvas ? canvas.getContext('2d') : null;
@@ -453,6 +455,7 @@ export class UIManager {
     if (!btnOpen || !modal) return;
 
     let currentParsedModel = null;
+    let currentTextureUrl = null;
 
     const renderPreview = () => {
       if (!ctx || !canvas) return;
@@ -472,16 +475,17 @@ export class UIManager {
         return;
       }
 
-      const parsed = parseMinecraftGeometry(jsonString);
-      if (parsed && parsed.cubes && parsed.cubes.length > 0) {
+      const parsed = parseBedrockJSON(jsonString);
+      if (parsed && (parsed.bones || (parsed.cubes && parsed.cubes.length > 0))) {
         currentParsedModel = parsed;
-        statusMsg.textContent = `Géométrie valide (${parsed.cubes.length} cubes détectés)`;
+        const totalCubes = parsed.cubes?.length || parsed.bones?.reduce((acc, b) => acc + (b.cubes?.length || 0), 0) || 0;
+        statusMsg.textContent = `Modèle Blockbench valide (${totalCubes} cubes détectés)`;
         statusMsg.className = 'geo-status-msg success';
         btnConfirm.disabled = false;
         renderPreview();
       } else {
         currentParsedModel = null;
-        statusMsg.textContent = 'Erreur : format JSON non reconnu';
+        statusMsg.textContent = 'Erreur : format JSON Blockbench non reconnu';
         statusMsg.className = 'geo-status-msg error';
         btnConfirm.disabled = true;
         renderPreview();
@@ -513,6 +517,22 @@ export class UIManager {
       });
     }
 
+    if (btnBrowseTexture && textureInput) {
+      btnBrowseTexture.addEventListener('click', () => textureInput.click());
+      textureInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          textureNameSpan.textContent = file.name;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            currentTextureUrl = ev.target.result;
+            statusMsg.textContent = `Modèle Blockbench & Texture PNG prêts !`;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
     if (textarea) {
       textarea.addEventListener('input', () => validateJson(textarea.value));
     }
@@ -520,11 +540,15 @@ export class UIManager {
     if (btnConfirm) {
       btnConfirm.addEventListener('click', () => {
         if (!currentParsedModel) return;
-        const rawName = nameInput.value.trim() || 'Meuble Minecraft';
+        const rawName = nameInput.value.trim() || 'Meuble Blockbench';
         const cat = catSelect.value || 'salon';
         const customId = 'custom_' + Date.now();
+        const geoId = currentParsedModel.description?.identifier || `geometry.${customId}`;
 
-        // Enregistrer la géométrie dans le catalogue
+        // Enregistrer la géométrie et la texture dans le moteur 3D
+        BedrockGeometryRegistry.register(geoId, currentParsedModel, currentTextureUrl);
+
+        // Enregistrer dans le catalogue
         registerCustomFurniture({
           id: customId,
           name: rawName,
@@ -534,12 +558,13 @@ export class UIManager {
           price: 25000,
           interactive: null,
           isWalkable: false,
-          geoJson: currentParsedModel
+          geoId: geoId,
+          textureUrl: currentTextureUrl
         });
 
         // Actualiser l'affichage du catalogue
         this.renderCatalog();
-        this.showToast(`Meuble "${rawName}" ajouté au catalogue !`, 'success');
+        this.showToast(`Meuble Blockbench "${rawName}" ajouté avec succès !`, 3000);
         closeModal();
       });
     }
@@ -622,89 +647,171 @@ export class UIManager {
     ctx.clearRect(0, 0, w, h);
 
     const centerX = w / 2;
-    const centerY = h - 30;
+    const centerY = h - 28;
 
-    // Ombre
+    // Ombre au sol
     ctx.beginPath();
-    ctx.ellipse(centerX, centerY + 6, 24, 10, 0, 0, Math.PI * 2);
+    ctx.ellipse(centerX, centerY + 8, 28, 9, 0, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
     ctx.fill();
 
-    // Pieds
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(centerX - 12, centerY - 6, 9, 7);
-    ctx.fillRect(centerX + 3, centerY - 6, 9, 7);
-
-    // Pantalon
+    // 1. Jambes Roblox (Arrondies avec sneakers)
     ctx.fillStyle = this.avatarConfig.pantsColor;
-    ctx.fillRect(centerX - 10, centerY - 24, 8, 20);
-    ctx.fillRect(centerX + 2, centerY - 24, 8, 20);
+    // Jambe gauche
+    ctx.beginPath();
+    ctx.roundRect(centerX - 16, centerY - 28, 13, 26, 4);
+    ctx.fill();
+    // Chaussure gauche
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.roundRect(centerX - 17, centerY - 6, 15, 8, [0, 0, 4, 4]);
+    ctx.fill();
 
-    // Buste
-    const torsoY = centerY - 52;
+    // Jambe droite
+    ctx.fillStyle = this.avatarConfig.pantsColor;
+    ctx.beginPath();
+    ctx.roundRect(centerX + 3, centerY - 28, 13, 26, 4);
+    ctx.fill();
+    // Chaussure droite
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.roundRect(centerX + 2, centerY - 6, 15, 8, [0, 0, 4, 4]);
+    ctx.fill();
+
+    // 2. Torse Roblox (Trapézoïdal aux épaules arrondies)
+    const torsoY = centerY - 58;
     ctx.fillStyle = this.avatarConfig.shirtColor;
-    ctx.fillRect(centerX - 16, torsoY, 32, 30);
+    ctx.beginPath();
+    ctx.roundRect(centerX - 17, torsoY, 34, 30, 5);
+    ctx.fill();
 
-    // Motifs Faso Dan Fani ou Boubou
+    // Motifs textiles traditionnels Faso Dan Fani ou Boubou
     if (this.avatarConfig.outfitStyle === 'faso_dan_fani') {
-      ctx.fillStyle = '#dc2626';
-      ctx.fillRect(centerX - 8, torsoY, 4, 30);
-      ctx.fillStyle = '#facc15';
-      ctx.fillRect(centerX + 4, torsoY, 4, 30);
-      ctx.fillStyle = '#16a34a';
-      ctx.fillRect(centerX - 2, torsoY, 4, 30);
-    } else if (this.avatarConfig.outfitStyle === 'boubou') {
+      const stripes = ['#b91c1c', '#facc15', '#15803d', '#ffffff'];
+      for (let i = 0; i < 4; i++) {
+        ctx.fillStyle = stripes[i % stripes.length];
+        ctx.fillRect(centerX - 12 + i * 7, torsoY + 2, 4, 26);
+      }
+      ctx.fillStyle = '#fef08a';
       ctx.beginPath();
-      ctx.moveTo(centerX - 22, torsoY + 30);
-      ctx.lineTo(centerX - 16, torsoY);
-      ctx.lineTo(centerX + 16, torsoY);
-      ctx.lineTo(centerX + 22, torsoY + 30);
+      ctx.moveTo(centerX - 7, torsoY);
+      ctx.lineTo(centerX, torsoY + 12);
+      ctx.lineTo(centerX + 7, torsoY);
       ctx.closePath();
-      ctx.fillStyle = this.avatarConfig.shirtColor;
       ctx.fill();
-
-      ctx.strokeStyle = '#facc15';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(centerX - 6, torsoY + 4, 12, 14);
+    } else if (this.avatarConfig.outfitStyle === 'boubou') {
+      ctx.fillStyle = '#ca8a04';
+      ctx.beginPath();
+      ctx.arc(centerX, torsoY + 10, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fef08a';
+      ctx.beginPath();
+      ctx.arc(centerX, torsoY + 10, 4, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    // Bras
+    // 3. Bras Roblox (Épaules sphériques et mains rondes)
+    // Bras gauche
+    ctx.fillStyle = this.avatarConfig.shirtColor;
+    ctx.beginPath();
+    ctx.arc(centerX - 23, torsoY + 6, 6, 0, Math.PI * 2); // Épaule arrondie
+    ctx.fill();
+    ctx.roundRect(centerX - 27, torsoY + 6, 9, 18, 3);
+    ctx.fill();
+    // Main gauche (peau)
     ctx.fillStyle = this.avatarConfig.skin;
-    ctx.fillRect(centerX - 22, torsoY + 4, 6, 18);
-    ctx.fillRect(centerX + 16, torsoY + 4, 6, 18);
+    ctx.beginPath();
+    ctx.arc(centerX - 22.5, torsoY + 27, 4.5, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Cou
-    ctx.fillRect(centerX - 4, torsoY - 8, 8, 8);
+    // Bras droit
+    ctx.fillStyle = this.avatarConfig.shirtColor;
+    ctx.beginPath();
+    ctx.arc(centerX + 23, torsoY + 6, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.roundRect(centerX + 18, torsoY + 6, 9, 18, 3);
+    ctx.fill();
+    // Main droite (peau)
+    ctx.fillStyle = this.avatarConfig.skin;
+    ctx.beginPath();
+    ctx.arc(centerX + 22.5, torsoY + 27, 4.5, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Tête
-    const headY = torsoY - 34;
-    ctx.fillRect(centerX - 13, headY, 26, 26);
+    // 4. Cou & Tête cylindrique Roblox
+    // Cou stud
+    ctx.fillStyle = this.avatarConfig.skin;
+    ctx.beginPath();
+    ctx.roundRect(centerX - 5, torsoY - 5, 10, 6, 2);
+    ctx.fill();
 
-    // Yeux
+    // Tête Roblox
+    const headY = torsoY - 35;
+    ctx.beginPath();
+    ctx.roundRect(centerX - 13, headY, 26, 28, [8, 8, 5, 5]);
+    ctx.fill();
+
+    // Stud supérieur Roblox
+    ctx.beginPath();
+    ctx.roundRect(centerX - 5, headY - 4, 10, 5, 2);
+    ctx.fill();
+
+    // Visage expressif Roblox (Yeux avec reflets blancs & sourire)
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(centerX - 8, headY + 10, 5, 5);
-    ctx.fillRect(centerX + 3, headY + 10, 5, 5);
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(centerX - 6, headY + 12, 3, 3);
-    ctx.fillRect(centerX + 5, headY + 12, 3, 3);
+    ctx.beginPath();
+    ctx.ellipse(centerX - 5, headY + 10, 3.5, 4.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(centerX + 5, headY + 10, 3.5, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Coiffure
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.ellipse(centerX - 4.5, headY + 10, 2.2, 3.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(centerX + 4.5, headY + 10, 2.2, 3.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(centerX - 5.5, headY + 8.5, 1.2, 0, Math.PI * 2);
+    ctx.arc(centerX + 3.5, headY + 8.5, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Sourire Roblox
+    ctx.strokeStyle = '#3b1c06';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(centerX, headY + 17, 6, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.stroke();
+
+    // 5. Coiffure 3D Roblox
     ctx.fillStyle = this.avatarConfig.hairColor;
     if (this.avatarConfig.hairStyle === 'afro') {
       ctx.beginPath();
-      ctx.arc(centerX, headY + 3, 18, 0, Math.PI * 2);
+      ctx.arc(centerX, headY + 3, 17, 0, Math.PI * 2);
+      ctx.arc(centerX - 9, headY + 1, 10, 0, Math.PI * 2);
+      ctx.arc(centerX + 9, headY + 1, 10, 0, Math.PI * 2);
       ctx.fill();
     } else if (this.avatarConfig.hairStyle === 'dreads') {
-      ctx.fillRect(centerX - 16, headY - 6, 32, 12);
-      ctx.fillRect(centerX - 18, headY + 4, 6, 20);
-      ctx.fillRect(centerX + 12, headY + 4, 6, 20);
+      ctx.beginPath();
+      ctx.roundRect(centerX - 15, headY - 4, 30, 10, 5);
+      ctx.fill();
+      // Mèches
+      for (let x = -13; x <= 13; x += 6) {
+        ctx.beginPath();
+        ctx.roundRect(centerX + x, headY + 4, 4, 18, 2);
+        ctx.fill();
+      }
     } else if (this.avatarConfig.hairStyle === 'foulard') {
-      ctx.fillStyle = '#f59e0b';
-      ctx.fillRect(centerX - 16, headY - 8, 32, 14);
-      ctx.fillStyle = '#dc2626';
-      ctx.fillRect(centerX - 4, headY - 12, 8, 8);
+      ctx.fillStyle = this.avatarConfig.shirtColor;
+      ctx.beginPath();
+      ctx.roundRect(centerX - 15, headY - 5, 30, 12, 6);
+      ctx.fill();
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.arc(centerX + 7, headY - 4, 5, 0, Math.PI * 2);
+      ctx.fill();
     } else {
-      ctx.fillRect(centerX - 14, headY - 5, 28, 8);
+      ctx.beginPath();
+      ctx.roundRect(centerX - 14, headY - 4, 28, 8, 4);
+      ctx.fill();
     }
   }
 
@@ -719,23 +826,45 @@ export class UIManager {
     const hair = avatar.hairColor || '#1a110b';
     const hairStyle = avatar.hairStyle || 'afro';
 
+    // Tête Roblox avec stud
     ctx.fillStyle = skin;
-    ctx.fillRect(10, 14, 24, 24);
+    ctx.beginPath();
+    ctx.roundRect(10, 13, 24, 25, 6);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(17, 9, 10, 4, 2);
+    ctx.fill();
 
+    // Yeux expressifs
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(14, 22, 5, 5);
-    ctx.fillRect(25, 22, 5, 5);
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(16, 24, 3, 3);
-    ctx.fillRect(27, 24, 3, 3);
+    ctx.beginPath();
+    ctx.ellipse(16, 23, 3, 4, 0, 0, Math.PI * 2);
+    ctx.ellipse(27, 23, 3, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
 
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(16, 23, 2, 0, Math.PI * 2);
+    ctx.arc(27, 23, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Sourire
+    ctx.strokeStyle = '#3b1c06';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(22, 29, 5, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.stroke();
+
+    // Coiffure
     ctx.fillStyle = hair;
     if (hairStyle === 'afro') {
       ctx.beginPath();
-      ctx.arc(22, 16, 14, 0, Math.PI * 2);
+      ctx.arc(22, 14, 15, 0, Math.PI * 2);
       ctx.fill();
     } else {
-      ctx.fillRect(8, 8, 28, 10);
+      ctx.beginPath();
+      ctx.roundRect(8, 7, 28, 9, 4);
+      ctx.fill();
     }
   }
 }

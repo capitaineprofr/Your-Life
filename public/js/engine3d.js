@@ -3,7 +3,7 @@
 // géométries Minecraft Bedrock et navigation 3D point-and-click.
 
 import * as THREE from 'three';
-import { BedrockGeometryRegistry, createBedrockMesh, parseBedrockJSON } from './bedrock_3d.js';
+import { BedrockGeometryRegistry, createBedrockMesh, parseBedrockJSON, initDefaultBedrockModels } from './bedrock_3d.js';
 import { Avatar3D } from './avatar_3d.js';
 import { FURNITURE_CATALOG } from './furniture.js';
 
@@ -114,6 +114,13 @@ export class IsometricEngine {
     this.setupEventListeners();
     this.resize();
     this.animate();
+
+    // Initialisation des modèles Blockbench et rechargement des textures
+    initDefaultBedrockModels().then(() => {
+      if (this.furniture && this.furniture.length > 0) {
+        this.setFurniture(this.furniture);
+      }
+    });
   }
 
   get userZoom() {
@@ -385,6 +392,7 @@ export class IsometricEngine {
   spawnFurnitureMesh(item) {
     const catalogItem = FURNITURE_CATALOG[item.type] || {};
     const geoId = catalogItem.geoId || `geometry.${item.type}`;
+    const textureUrl = catalogItem.textureUrl || BedrockGeometryRegistry.getTexture(geoId) || null;
     let geoData = BedrockGeometryRegistry.get(geoId);
 
     if (!geoData) {
@@ -400,7 +408,7 @@ export class IsometricEngine {
 
     const meshGroup = createBedrockMesh(geoData, {
       scale: 1 / 16,
-      textureUrl: item.type === 'mayor_table' ? 'assets/mayortable.png' : null
+      textureUrl
     });
 
     meshGroup.name = `furniture_${item.id}`;
@@ -455,12 +463,13 @@ export class IsometricEngine {
 
     const catalogItem = FURNITURE_CATALOG[itemType] || {};
     const geoId = catalogItem.geoId || `geometry.${itemType}`;
+    const textureUrl = catalogItem.textureUrl || BedrockGeometryRegistry.getTexture(geoId) || null;
     const geoData = BedrockGeometryRegistry.get(geoId);
 
     if (geoData) {
       this.placingGhost = createBedrockMesh(geoData, {
         scale: 1 / 16,
-        textureUrl: itemType === 'mayor_table' ? 'assets/mayortable.png' : null
+        textureUrl
       });
       // Effet fantôme transparent
       this.placingGhost.traverse(child => {

@@ -237,11 +237,16 @@
         </div>
         <div class="geo-modal-body">
           <div class="geo-import-left">
-            <p class="geo-help-text">Compatible avec les fichiers de géométrie Minecraft Bedrock 1.12+ (blocs & entités avec <code>bones</code> et <code>cubes</code>).</p>
+            <p class="geo-help-text">Compatible avec les fichiers de géométrie Minecraft Bedrock 1.12+ et Blockbench (.geo.json avec texture .png).</p>
             <div class="file-drop-area" id="geo-drop-zone">
               <input type="file" id="geo-file-input" accept=".json,.geo.json" style="display:none;">
-              <button type="button" id="btn-browse-geo-file" class="btn-browse-file">Charger un fichier .geo.json</button>
-              <span id="geo-file-name" class="geo-file-name">Ou coller directement le JSON ci-dessous</span>
+              <button type="button" id="btn-browse-geo-file" class="btn-browse-file">1. Modèle Blockbench (.geo.json)</button>
+              <span id="geo-file-name" class="geo-file-name">Fichier JSON ou coller ci-dessous</span>
+            </div>
+            <div class="file-drop-area" id="geo-texture-drop-zone" style="margin-top: 8px;">
+              <input type="file" id="geo-texture-input" accept="image/png" style="display:none;">
+              <button type="button" id="btn-browse-geo-texture" class="btn-browse-file">2. Texture PNG Blockbench</button>
+              <span id="geo-texture-name" class="geo-file-name">Optionnelle (Couleur unie par défaut)</span>
             </div>
             <textarea id="geo-json-textarea" class="geo-json-input" placeholder='{
   "format_version": "1.12.0",

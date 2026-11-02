@@ -1,0 +1,37 @@
+{
+	"format_version": "1.19.0",
+	"minecraft:geometry": [
+		{
+			"description": {
+				"identifier": "geometry.globe",
+				"texture_width": 64,
+				"texture_height": 64,
+				"visible_bounds_width": 2,
+				"visible_bounds_height": 2.5,
+				"visible_bounds_offset": [0, 0.75, 0]
+			},
+			"bones": [
+				{
+					"name": "block",
+					"pivot": [0, 0, 0],
+					"cubes": [
+						{"origin": [-5, 0, -5], "size": [10, 1, 10], "uv": [0, 0]},
+						{"origin": [-1, 1, -1], "size": [2, 2, 2], "uv": [32, 20]}
+					]
+				},
+				{
+					"name": "bone",
+					"parent": "block",
+					"pivot": [0, -2.3, 0],
+					"rotation": [-10, 45, 0],
+					"cubes": [
+						{"origin": [-1, 2.7, -4], "size": [2, 1, 8], "uv": [0, 27]},
+						{"origin": [-1, 11.7, -4], "size": [2, 1, 8], "uv": [20, 27]},
+						{"origin": [-1, 7.7, 0], "size": [2, 1, 8], "pivot": [0, 7.7, 4], "rotation": [90, 0, 0], "uv": [32, 11]},
+						{"origin": [-4, 3.7, -6], "size": [8, 8, 8], "uv": [0, 11]}
+					]
+				}
+			]
+		}
+	]
+}

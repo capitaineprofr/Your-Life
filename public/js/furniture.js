@@ -1,9 +1,10 @@
-// --- Catalogue des Meubles 3D Isométriques (Style Minecraft Bedrock) ---
+// --- Catalogue des Meubles 3D Isométriques Authentiques Blockbench ---
 
 export const FURNITURE_CATALOG = {
   mayor_table: {
     id: 'mayor_table',
     geoId: 'geometry.mayor_table',
+    textureUrl: 'assets/mayortable.png',
     name: "Table de Leader (Jerry's Nations)",
     category: 'bureau',
     sizeX: 2,
@@ -12,73 +13,67 @@ export const FURNITURE_CATALOG = {
     price: 35000,
     interactive: 'work'
   },
-  sofa_3p: {
-    id: 'sofa_3p',
-    geoId: 'geometry.sofa_3p',
-    name: "Canapé 3P Faso Dan Fani",
-    category: 'salon',
-    sizeX: 2,
-    sizeY: 1,
-    height: 32,
-    price: 25000,
-    interactive: 'sit'
-  },
-  bed_double: {
-    id: 'bed_double',
-    geoId: 'geometry.bed_double',
-    name: "Grand Lit Double Sahélien",
-    category: 'chambre',
-    sizeX: 2,
-    sizeY: 2,
-    height: 30,
-    price: 45000,
-    interactive: 'sleep'
-  },
-  desk_pc: {
-    id: 'desk_pc',
-    geoId: 'geometry.desk_pc',
-    name: "Bureau Développeur & PC",
+  blueprint_table: {
+    id: 'blueprint_table',
+    geoId: 'geometry.blueprint_table',
+    textureUrl: 'assets/blueprintTable.png',
+    name: "Table de Plans d'Architecte",
     category: 'bureau',
     sizeX: 2,
     sizeY: 1,
-    height: 35,
-    price: 30000,
+    height: 46,
+    price: 28000,
     interactive: 'work'
   },
-  rug: {
-    id: 'rug',
-    geoId: 'geometry.rug',
-    name: "Tapis Tissé Faso Dan Fani",
-    category: 'deco',
-    sizeX: 2,
-    sizeY: 2,
-    height: 2,
-    price: 12000,
-    isWalkable: true
-  },
-  tv_stand: {
-    id: 'tv_stand',
-    geoId: 'geometry.tv_stand',
-    name: "Meuble TV & Écran",
-    category: 'salon',
+  tax_table: {
+    id: 'tax_table',
+    geoId: 'geometry.tax_table',
+    textureUrl: 'assets/taxTable.png',
+    name: "Comptoir Trésor & Douane",
+    category: 'bureau',
     sizeX: 2,
     sizeY: 1,
-    height: 32,
+    height: 48,
     price: 32000,
-    interactive: 'watch_tv'
+    interactive: 'work'
+  },
+  bounty_board: {
+    id: 'bounty_board',
+    geoId: 'geometry.bounty_board',
+    textureUrl: 'assets/bounty_board.png',
+    name: "Panneau de Primes & Missions",
+    category: 'deco',
+    sizeX: 2,
+    sizeY: 1,
+    height: 52,
+    price: 22000,
+    interactive: 'work'
+  },
+  globe: {
+    id: 'globe',
+    geoId: 'geometry.globe',
+    textureUrl: 'assets/globe.png',
+    name: "Globe Terrestre Colonial",
+    category: 'deco',
+    sizeX: 1,
+    sizeY: 1,
+    height: 32,
+    price: 15000,
+    interactive: 'work'
   }
 };
 
 /**
- * Enregistrement dynamique d'un meuble personnalisé
+ * Enregistrement dynamique d'un meuble personnalisé importé depuis Blockbench
  */
 export function registerCustomFurniture(options) {
-  const { id, name, category, sizeX, sizeY, price, interactive, isWalkable } = options;
-  const geoId = `geometry.${id}`;
+  const { id, name, category, sizeX, sizeY, price, interactive, isWalkable, geoId, textureUrl } = options;
+  const finalGeoId = geoId || `geometry.${id}`;
 
   FURNITURE_CATALOG[id] = {
     id,
-    geoId,
+    geoId: finalGeoId,
+    textureUrl: textureUrl || null,
     name: name || id,
     category: category || 'salon',
     sizeX: sizeX || 1,
