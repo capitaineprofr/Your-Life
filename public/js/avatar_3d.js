@@ -129,6 +129,68 @@ function createRobloxShirtTexture(shirtColor = '#d97706', style = 'faso_dan_fani
     ctx.beginPath();
     ctx.arc(64, 32, 8, 0, Math.PI * 2);
     ctx.fill();
+  } else if (style === 'polo') {
+    // Polo chic sahélien avec col contrasté et patte de boutonnage
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    // Col polo
+    ctx.moveTo(36, 0);
+    ctx.lineTo(64, 20);
+    ctx.lineTo(92, 0);
+    ctx.lineTo(82, 14);
+    ctx.lineTo(64, 28);
+    ctx.lineTo(46, 14);
+    ctx.closePath();
+    ctx.fill();
+
+    // Patte de boutonnage
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillRect(59, 20, 10, 36);
+
+    // Boutons
+    ctx.fillStyle = '#334155';
+    ctx.beginPath();
+    ctx.arc(64, 28, 2, 0, Math.PI * 2);
+    ctx.arc(64, 40, 2, 0, Math.PI * 2);
+    ctx.arc(64, 50, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Petit logo brodé sur la poitrine gauche
+    ctx.fillStyle = '#ca8a04';
+    ctx.beginPath();
+    ctx.arc(42, 42, 4, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // Style Casual (T-shirt urbain Ouaga avec col rond et motif géométrique)
+    // Col rond
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(64, 0, 22, 0, Math.PI);
+    ctx.fill();
+
+    ctx.fillStyle = shirtColor;
+    ctx.beginPath();
+    ctx.arc(64, 0, 16, 0, Math.PI);
+    ctx.fill();
+
+    // Motif sérigraphié moderne sur le torse
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+    ctx.beginPath();
+    ctx.roundRect(40, 36, 48, 48, 8);
+    ctx.fill();
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Triangle emblématique sahélien stylisé
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.moveTo(64, 44);
+    ctx.lineTo(80, 72);
+    ctx.lineTo(48, 72);
+    ctx.closePath();
+    ctx.fill();
   }
 
   // Ombrage discret des coutures
@@ -245,16 +307,34 @@ export class Avatar3D {
 
     this.group.add(this.torsoGroup);
 
-    // 3. BRAS GAUCHE ROBLOX (Articulé avec épaule arrondie)
+    // 3. BRAS GAUCHE ROBLOX (Articulé avec épaule arrondie et support manches courtes/longues)
+    const isShortSleeve = this.config.outfitStyle === 'casual' || this.config.outfitStyle === 'polo';
     this.leftArmGroup = new THREE.Group();
     this.leftArmGroup.position.set(-0.62, 1.35, 0); // Pivot à l'épaule
     this.leftArmGroup.rotation.z = 0.08; // Légèrement écarté au repos (pose classique Roblox)
 
-    const armGeo = new THREE.BoxGeometry(0.34, 0.88, 0.36);
-    const leftArmMesh = new THREE.Mesh(armGeo, shirtMat);
-    leftArmMesh.position.set(0, -0.42, 0);
-    leftArmMesh.castShadow = true;
-    this.leftArmGroup.add(leftArmMesh);
+    if (isShortSleeve) {
+      // Manche courte
+      const sleeveGeo = new THREE.BoxGeometry(0.34, 0.36, 0.36);
+      const leftSleeve = new THREE.Mesh(sleeveGeo, shirtMat);
+      leftSleeve.position.set(0, -0.18, 0);
+      leftSleeve.castShadow = true;
+      this.leftArmGroup.add(leftSleeve);
+
+      // Avant-bras nu couleur peau
+      const foreArmGeo = new THREE.BoxGeometry(0.32, 0.52, 0.34);
+      const leftForeArm = new THREE.Mesh(foreArmGeo, skinMat);
+      leftForeArm.position.set(0, -0.58, 0);
+      leftForeArm.castShadow = true;
+      this.leftArmGroup.add(leftForeArm);
+    } else {
+      // Manche longue (Faso Dan Fani / Boubou)
+      const armGeo = new THREE.BoxGeometry(0.34, 0.88, 0.36);
+      const leftArmMesh = new THREE.Mesh(armGeo, shirtMat);
+      leftArmMesh.position.set(0, -0.42, 0);
+      leftArmMesh.castShadow = true;
+      this.leftArmGroup.add(leftArmMesh);
+    }
 
     // Épaule demi-sphérique
     const shoulderGeo = new THREE.SphereGeometry(0.18, 16, 12);
@@ -272,15 +352,30 @@ export class Avatar3D {
 
     this.group.add(this.leftArmGroup);
 
-    // 4. BRAS DROIT ROBLOX (Articulé avec épaule arrondie)
+    // 4. BRAS DROIT ROBLOX (Articulé avec épaule arrondie et support manches courtes/longues)
     this.rightArmGroup = new THREE.Group();
     this.rightArmGroup.position.set(0.62, 1.35, 0);
     this.rightArmGroup.rotation.z = -0.08;
 
-    const rightArmMesh = new THREE.Mesh(armGeo, shirtMat);
-    rightArmMesh.position.set(0, -0.42, 0);
-    rightArmMesh.castShadow = true;
-    this.rightArmGroup.add(rightArmMesh);
+    if (isShortSleeve) {
+      const sleeveGeo = new THREE.BoxGeometry(0.34, 0.36, 0.36);
+      const rightSleeve = new THREE.Mesh(sleeveGeo, shirtMat);
+      rightSleeve.position.set(0, -0.18, 0);
+      rightSleeve.castShadow = true;
+      this.rightArmGroup.add(rightSleeve);
+
+      const foreArmGeo = new THREE.BoxGeometry(0.32, 0.52, 0.34);
+      const rightForeArm = new THREE.Mesh(foreArmGeo, skinMat);
+      rightForeArm.position.set(0, -0.58, 0);
+      rightForeArm.castShadow = true;
+      this.rightArmGroup.add(rightForeArm);
+    } else {
+      const armGeo = new THREE.BoxGeometry(0.34, 0.88, 0.36);
+      const rightArmMesh = new THREE.Mesh(armGeo, shirtMat);
+      rightArmMesh.position.set(0, -0.42, 0);
+      rightArmMesh.castShadow = true;
+      this.rightArmGroup.add(rightArmMesh);
+    }
 
     const rightShoulder = new THREE.Mesh(shoulderGeo, shirtMat);
     rightShoulder.position.set(0, 0.02, 0);
