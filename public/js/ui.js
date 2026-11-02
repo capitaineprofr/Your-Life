@@ -43,6 +43,7 @@ export class UIManager {
     // 3. Customisation Sidebar (Droite)
     this.customSidebar = document.getElementById('hud-custom-sidebar');
     this.btnToggleCustomSize = document.getElementById('btn-toggle-custom-size');
+    this.tabToggleCustom = document.getElementById('tab-toggle-custom');
     this.customOwnerContent = document.getElementById('custom-owner-content');
     this.customVisitorNotice = document.getElementById('custom-visitor-notice');
     this.catalogGrid = document.getElementById('catalog-grid');
@@ -53,7 +54,12 @@ export class UIManager {
     this.btnDeselectFurniture = document.getElementById('btn-deselect-furniture');
     this.btnClearRoom = document.getElementById('btn-clear-room');
 
-    // 4. Besoins Circulaires (4 Cercles Alignés avec contours de progression)
+    // 4. Widget Besoins Vitaux & Réduction
+    this.needsWidget = document.getElementById('hud-needs-widget');
+    this.btnToggleNeedsSize = document.getElementById('btn-toggle-needs-size');
+    this.tabToggleNeeds = document.getElementById('tab-toggle-needs');
+
+    // 5. Besoins Circulaires (4 Cercles Alignés avec contours de progression)
     this.needsGauges = {
       hunger: {
         ring: document.getElementById('gauge-ring-hunger'),
@@ -152,15 +158,32 @@ export class UIManager {
       }
     });
 
-    // Réduction / Extension des barres latérales
+    // Réduction / Extension des barres latérales droites (Animation par la droite)
     if (this.btnToggleChatSize) {
       this.btnToggleChatSize.addEventListener('click', () => {
         this.chatSidebar.classList.toggle('collapsed');
       });
     }
+
     if (this.btnToggleCustomSize) {
       this.btnToggleCustomSize.addEventListener('click', () => {
-        this.customSidebar.classList.toggle('collapsed');
+        this.customSidebar.classList.add('collapsed');
+      });
+    }
+    if (this.tabToggleCustom) {
+      this.tabToggleCustom.addEventListener('click', () => {
+        this.customSidebar.classList.remove('collapsed');
+      });
+    }
+
+    if (this.btnToggleNeedsSize) {
+      this.btnToggleNeedsSize.addEventListener('click', () => {
+        this.needsWidget.classList.add('collapsed');
+      });
+    }
+    if (this.tabToggleNeeds) {
+      this.tabToggleNeeds.addEventListener('click', () => {
+        this.needsWidget.classList.remove('collapsed');
       });
     }
 

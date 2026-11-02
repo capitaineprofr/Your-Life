@@ -77,9 +77,15 @@
 
       <!-- 4. Sur la droite : Panneau de Customisation & Mobilier -->
       <div id="hud-custom-sidebar" class="floating-widget widget-right-custom">
+        <!-- Onglet de réouverture sur le bord droit -->
+        <button class="panel-edge-tab" id="tab-toggle-custom" title="Ouvrir Customisation Mobilier">
+          <span class="tab-arrow">‹</span>
+          <span class="tab-text">Mobilier</span>
+        </button>
+
         <div class="sidebar-header">
           <span class="sidebar-title">Customisation Mobilier</span>
-          <button id="btn-toggle-custom-size" class="btn-sidebar-toggle" title="Réduire">_</button>
+          <button id="btn-toggle-custom-size" class="btn-sidebar-toggle" title="Réduire vers la droite">›</button>
         </div>
 
         <div id="custom-owner-content" class="custom-content">
@@ -122,9 +128,18 @@
 
       <!-- 5. En bas à droite : Besoins Naturels (Style Les Sims) -->
       <div id="hud-needs-widget" class="floating-widget widget-bottom-right-needs">
+        <!-- Onglet de réouverture sur le bord droit -->
+        <button class="panel-edge-tab" id="tab-toggle-needs" title="Ouvrir Besoins Vitaux">
+          <span class="tab-arrow">‹</span>
+          <span class="tab-text">Besoins</span>
+        </button>
+
         <div class="needs-header">
           <span class="needs-title">Besoins Vitaux</span>
-          <span id="needs-overall-status" class="needs-tag">En forme</span>
+          <div class="needs-header-right">
+            <span id="needs-overall-status" class="needs-tag">En forme</span>
+            <button id="btn-toggle-needs-size" class="btn-sidebar-toggle" title="Réduire vers la droite">›</button>
+          </div>
         </div>
         <!-- 4 Cercles de Besoins Alignés (Style Circulaire Demandé) -->
         <div class="needs-circles-row">
