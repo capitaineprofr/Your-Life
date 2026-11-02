@@ -4,11 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Your-Life : Simulateur de Vie Ouagadougou (Multijoueur)</title>
-  <meta name="description" content="Simulateur de vie multijoueur en vue isométrique 2.5D se déroulant à Ouagadougou, Burkina Faso.">
+  <meta name="description" content="Simulateur de vie multijoueur en vue 3D isométrique se déroulant à Ouagadougou, Burkina Faso.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/libs/three/three.module.js",
+      "three/addons/": "/libs/three/addons/"
+    }
+  }
+  </script>
 </head>
 <body>
   <div id="game-container">

@@ -43,6 +43,8 @@ let db = loadDatabase();
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/libs/three', express.static(path.join(__dirname, 'node_modules', 'three', 'build')));
+app.use('/libs/three/addons', express.static(path.join(__dirname, 'node_modules', 'three', 'examples', 'jsm')));
 
 // Middleware Auth REST
 function authenticateToken(req, res, next) {
