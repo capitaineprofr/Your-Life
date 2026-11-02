@@ -1661,9 +1661,10 @@ html, body {
   color: #fef08a;
 }
 
-#btn-map-recenter {
+#btn-map-recenter,
+.btn-map-wide {
   width: auto;
-  padding: 0 12px;
+  padding: 0 10px;
   font-size: 11px;
 }
 
@@ -1685,7 +1686,7 @@ html, body {
   top: 72px;
   right: 16px;
   bottom: 20px;
-  width: 330px;
+  width: 340px;
   background: rgba(18, 22, 33, 0.92);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -1721,9 +1722,64 @@ html, body {
   color: #ffffff;
 }
 
-.sidebar-map-subtitle {
+/* Champ de Recherche Instantanée dans la Carte */
+.map-search-box {
+  margin-top: 8px;
+}
+
+.map-search-input {
+  width: 100%;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 11px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+}
+
+.map-search-input:focus {
+  border-color: var(--accent-gold);
+}
+
+.map-search-input::placeholder {
+  color: #64748b;
   font-size: 10px;
+}
+
+/* Onglets de Zones Géographiques (Centre, Nord, Est, Sud, Ouest, Périphérie) */
+.map-zone-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.zone-tab-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   color: #94a3b8;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.zone-tab-btn:hover {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fef08a;
+}
+
+.zone-tab-btn.active {
+  background: rgba(245, 158, 11, 0.28);
+  border-color: var(--accent-gold);
+  color: #ffffff;
+  font-weight: 700;
 }
 
 /* Liste Défilable des Quartiers */
