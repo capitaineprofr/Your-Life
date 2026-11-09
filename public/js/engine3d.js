@@ -70,13 +70,7 @@ export class IsometricEngine {
     // 5. Éclairage
     this.setupLighting();
 
-    // 6. Construction de la pièce 3D
-    this.roomGroup = new THREE.Group();
-    this.roomGroup.name = 'room_group';
-    this.scene.add(this.roomGroup);
-    this.buildRoom(this.architecture);
-
-    // 7. Gestion du Mobilier 3D
+    // 6. Gestion du Mobilier 3D (Initialisé avant la construction de la pièce)
     this.furnitureGroup = new THREE.Group();
     this.furnitureGroup.name = 'furniture_group';
     this.scene.add(this.furnitureGroup);
@@ -90,6 +84,12 @@ export class IsometricEngine {
 
     // Grille de collisions dynamique (gridSize x gridSize)
     this.collisionGrid = Array.from({ length: this.gridSize }, () => Array(this.gridSize).fill(0));
+
+    // 7. Construction de la pièce 3D
+    this.roomGroup = new THREE.Group();
+    this.roomGroup.name = 'room_group';
+    this.scene.add(this.roomGroup);
+    this.buildRoom(this.architecture);
 
     // 8. Gestion des Avatars 3D & Multijoueur
     this.avatarGroup = new THREE.Group();
@@ -573,9 +573,11 @@ export class IsometricEngine {
   }
 
   rebuildCollisionGrid() {
-    this.collisionGrid = Array.from({ length: this.gridSize }, () => Array(this.gridSize).fill(0));
-    for (const item of this.furniture) {
-      this.markFurnitureCollisions(item, 1);
+    this.collisionGrid = Array.from({ length: this.gridSize || 16 }, () => Array(this.gridSize || 16).fill(0));
+    if (Array.isArray(this.furniture)) {
+      for (const item of this.furniture) {
+        this.markFurnitureCollisions(item, 1);
+      }
     }
   }
 

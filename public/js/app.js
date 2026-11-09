@@ -78,27 +78,31 @@ class YourLifeApp {
       }
     });
 
-    // Initialisation Moteur Isométrique
-    this.engine = new IsometricEngine(this.canvas, {
-      onFloorClick: (clickData) => this.handleFloorClick(clickData),
-      onPlayerMoveStep: (moveData) => this.handlePlayerMoveStep(moveData),
-      onToast: (msg, dur) => this.ui.showToast(msg, dur),
-      onPlaceFurniture: (item) => {
-        this.network.sendFurniturePlace(item);
-        const stackMention = item.elevation > 0 ? ' (posé sur table)' : '';
-        this.ui.showToast(`Objet posé : ${item.type}${stackMention}`, 2000);
-      },
-      onSelectFurniture: (item) => {
-        this.ui.showFurnitureSelection(item);
-      },
-      onDeselectFurniture: () => {
-        this.ui.hideFurnitureSelection();
-      },
-      onRotateFurniture: (id) => {
-        this.network.sendFurnitureRotate(id);
-      },
-      onFurnitureInteract: (item) => this.handleFurnitureInteraction(item)
-    });
+    // Initialisation Moteur Isométrique (Sécurisée)
+    try {
+      this.engine = new IsometricEngine(this.canvas, {
+        onFloorClick: (clickData) => this.handleFloorClick(clickData),
+        onPlayerMoveStep: (moveData) => this.handlePlayerMoveStep(moveData),
+        onToast: (msg, dur) => this.ui.showToast(msg, dur),
+        onPlaceFurniture: (item) => {
+          this.network.sendFurniturePlace(item);
+          const stackMention = item.elevation > 0 ? ' (posé sur table)' : '';
+          this.ui.showToast(`Objet posé : ${item.type}${stackMention}`, 2000);
+        },
+        onSelectFurniture: (item) => {
+          this.ui.showFurnitureSelection(item);
+        },
+        onDeselectFurniture: () => {
+          this.ui.hideFurnitureSelection();
+        },
+        onRotateFurniture: (id) => {
+          this.network.sendFurnitureRotate(id);
+        },
+        onFurnitureInteract: (item) => this.handleFurnitureInteraction(item)
+      });
+    } catch (err) {
+      console.error('[YourLifeApp] Erreur chargement IsometricEngine:', err);
+    }
 
     // Initialisation Gestionnaire UI
     this.ui = new UIManager({
@@ -307,6 +311,14 @@ class YourLifeApp {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  new YourLifeApp();
-});
+function bootApp() {
+  if (!window.__yourLifeApp) {
+    window.__yourLifeApp = new YourLifeApp();
+  }
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', bootApp);
+} else {
+  bootApp();
+}
