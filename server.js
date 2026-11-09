@@ -1,43 +1,30 @@
+import 'dotenv/config';
 import express from 'express';
 import http from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
-import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { fileURLToPath } from 'node:url';
+import {
+  initDatabase,
+  findUserById,
+  findUserByUsername,
+  createUser,
+  updateUserAvatar,
+  addFcfa,
+  createSession,
+  getUserIdByToken,
+  getOrCreateHouse,
+  saveHouseArchitecture,
+  saveHouseFurniture,
+  listAllHouses
+} from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = process.env.PORT || 3000;
-const DB_FILE = path.join(__dirname, 'data', 'database.json');
-
-// --- Base de données JSON ---
-function loadDatabase() {
-  try {
-    if (!fs.existsSync(DB_FILE)) {
-      const initialDb = { users: [], sessions: {} };
-      fs.writeFileSync(DB_FILE, JSON.stringify(initialDb, null, 2), 'utf-8');
-      return initialDb;
-    }
-    const raw = fs.readFileSync(DB_FILE, 'utf-8');
-    return JSON.parse(raw);
-  } catch (err) {
-    console.error('Erreur lecture DB:', err);
-    return { users: [], sessions: {} };
-  }
-}
-
-function saveDatabase(db) {
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Erreur sauvegarde DB:', err);
-  }
-}
-
-let db = loadDatabase();
 
 // --- Configuration Serveur Express ---
 const app = express();
@@ -47,88 +34,96 @@ app.use('/libs/three', express.static(path.join(__dirname, 'node_modules', 'thre
 app.use('/libs/three/addons', express.static(path.join(__dirname, 'node_modules', 'three', 'examples', 'jsm')));
 
 // Middleware Auth REST
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Token manquant' });
+async function authenticateToken(req, res, next) {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Token manquant' });
 
-  const userId = db.sessions[token];
-  if (!userId) return res.status(403).json({ error: 'Session invalide' });
+    const userId = await getUserIdByToken(token);
+    if (!userId) return res.status(403).json({ error: 'Session invalide' });
 
-  const user = db.users.find(u => u.id === userId);
-  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+    const user = await findUserById(userId);
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
 
-  req.user = user;
-  req.token = token;
-  next();
+    req.user = user;
+    req.token = token;
+    next();
+  } catch (err) {
+    console.error('Erreur authenticateToken:', err);
+    return res.status(500).json({ error: 'Erreur interne du serveur' });
+  }
 }
 
-// --- Routes Authentification REST ---
+// --- Routes Authentification & Profil ---
 
 // Inscription
 app.post('/api/register', async (req, res) => {
-  const { username, password, avatar } = req.body;
-  const cleanUsername = (username || '').trim();
+  try {
+    const { username, password, avatar } = req.body;
+    const cleanUsername = (username || '').trim();
 
-  if (!cleanUsername || cleanUsername.length < 3) {
-    return res.status(400).json({ error: 'Le pseudo doit comporter au moins 3 caractères' });
+    if (!cleanUsername || cleanUsername.length < 3) {
+      return res.status(400).json({ error: 'Le pseudo doit comporter au moins 3 caractères' });
+    }
+    if (!password || password.length < 4) {
+      return res.status(400).json({ error: 'Le mot de passe doit comporter au moins 4 caractères' });
+    }
+
+    const existing = await findUserByUsername(cleanUsername);
+    if (existing) {
+      return res.status(409).json({ error: 'Ce pseudo est déjà utilisé' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const newUser = await createUser({
+      username: cleanUsername,
+      passwordHash,
+      avatar
+    });
+
+    // Créer d'office l'instance de logement de l'utilisateur
+    await getOrCreateHouse(newUser.id, newUser.username);
+
+    const token = crypto.randomBytes(32).toString('hex');
+    await createSession(token, newUser.id);
+
+    const { passwordHash: _, ...safeUser } = newUser;
+    return res.status(201).json({ token, user: safeUser });
+  } catch (err) {
+    console.error('Erreur inscription:', err);
+    return res.status(500).json({ error: 'Erreur interne du serveur' });
   }
-  if (!password || password.length < 4) {
-    return res.status(400).json({ error: 'Le mot de passe doit comporter au moins 4 caractères' });
-  }
-
-  const existing = db.users.find(u => u.username.toLowerCase() === cleanUsername.toLowerCase());
-  if (existing) {
-    return res.status(409).json({ error: 'Ce pseudo est déjà utilisé' });
-  }
-
-  const passwordHash = await bcrypt.hash(password, 10);
-  const newUser = {
-    id: 'user_' + crypto.randomUUID().slice(0, 8),
-    username: cleanUsername,
-    passwordHash,
-    avatar: avatar || {
-      skin: '#8d5524',
-      hairStyle: 'afro',
-      hairColor: '#1a110b',
-      outfitStyle: 'faso_dan_fani',
-      shirtColor: '#d97706',
-      pantsColor: '#1e293b'
-    },
-    fcfa: 15000, // 15 000 FCFA de bienvenue
-    createdAt: new Date().toISOString()
-  };
-
-  const token = crypto.randomBytes(32).toString('hex');
-  db.users.push(newUser);
-  db.sessions[token] = newUser.id;
-  saveDatabase(db);
-
-  const { passwordHash: _, ...safeUser } = newUser;
-  return res.status(201).json({ token, user: safeUser });
 });
 
 // Connexion
 app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
-  const cleanUsername = (username || '').trim();
+  try {
+    const { username, password } = req.body;
+    const cleanUsername = (username || '').trim();
 
-  const user = db.users.find(u => u.username.toLowerCase() === cleanUsername.toLowerCase());
-  if (!user) {
-    return res.status(401).json({ error: 'Identifiants invalides' });
+    const user = await findUserByUsername(cleanUsername);
+    if (!user) {
+      return res.status(401).json({ error: 'Identifiants invalides' });
+    }
+
+    const match = await bcrypt.compare(password, user.passwordHash);
+    if (!match) {
+      return res.status(401).json({ error: 'Identifiants invalides' });
+    }
+
+    // Assurer l'existence du logement
+    await getOrCreateHouse(user.id, user.username);
+
+    const token = crypto.randomBytes(32).toString('hex');
+    await createSession(token, user.id);
+
+    const { passwordHash: _, ...safeUser } = user;
+    return res.json({ token, user: safeUser });
+  } catch (err) {
+    console.error('Erreur connexion:', err);
+    return res.status(500).json({ error: 'Erreur interne du serveur' });
   }
-
-  const match = await bcrypt.compare(password, user.passwordHash);
-  if (!match) {
-    return res.status(401).json({ error: 'Identifiants invalides' });
-  }
-
-  const token = crypto.randomBytes(32).toString('hex');
-  db.sessions[token] = user.id;
-  saveDatabase(db);
-
-  const { passwordHash: _, ...safeUser } = user;
-  return res.json({ token, user: safeUser });
 });
 
 // Profil courant
@@ -138,123 +133,184 @@ app.get('/api/me', authenticateToken, (req, res) => {
 });
 
 // Mise à jour de l'avatar
-app.post('/api/avatar', authenticateToken, (req, res) => {
-  const { avatar } = req.body;
-  if (avatar) {
-    req.user.avatar = { ...req.user.avatar, ...avatar };
-    saveDatabase(db);
+app.post('/api/avatar', authenticateToken, async (req, res) => {
+  try {
+    const { avatar } = req.body;
+    let updatedUser = req.user;
+    if (avatar) {
+      updatedUser = await updateUserAvatar(req.user.id, avatar);
+    }
+    const { passwordHash: _, ...safeUser } = updatedUser;
+    res.json({ user: safeUser });
+  } catch (err) {
+    console.error('Erreur mise à jour avatar:', err);
+    res.status(500).json({ error: 'Erreur interne du serveur' });
   }
-  const { passwordHash: _, ...safeUser } = req.user;
-  res.json({ user: safeUser });
 });
 
-// Récompense mini-job (travailler sur l'ordinateur)
-app.post('/api/work', authenticateToken, (req, res) => {
-  const gain = 2500; // 2 500 FCFA
-  req.user.fcfa = (req.user.fcfa || 0) + gain;
-  saveDatabase(db);
-  res.json({ success: true, gain, fcfa: req.user.fcfa });
+// Récompense mini-job
+app.post('/api/work', authenticateToken, async (req, res) => {
+  try {
+    const gain = 2500;
+    const updated = await addFcfa(req.user.id, gain);
+    res.json({ success: true, gain, fcfa: updated.fcfa });
+  } catch (err) {
+    console.error('Erreur travail mini-job:', err);
+    res.status(500).json({ error: 'Erreur interne du serveur' });
+  }
 });
 
-// --- Serveur HTTP & WebSockets Multijoueur ---
+// Liste des résidences publiques pour exploration
+app.get('/api/houses', authenticateToken, async (req, res) => {
+  try {
+    const houses = await listAllHouses();
+    const housesWithOccupancy = houses.map(h => {
+      const activeRoom = houseRooms.get(h.ownerId);
+      const onlineVisitors = activeRoom ? activeRoom.clients.size : 0;
+      return {
+        ...h,
+        onlineVisitors,
+        isSelf: h.ownerId === req.user.id
+      };
+    });
+    res.json({ houses: housesWithOccupancy });
+  } catch (err) {
+    console.error('Erreur list houses:', err);
+    res.status(500).json({ error: 'Erreur interne du serveur' });
+  }
+});
+
+// --- Serveur HTTP & WebSockets Multijoueur Multi-Instances ---
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-// État de la salle (Appartement Ouagadougou)
-const connectedPlayers = new Map(); // ws -> playerData
-let roomOwnerId = null;
+// Instances de logements en mémoire vive : ownerId -> { ownerId, ownerUsername, roomName, architecture, furniture, clients: Map(ws -> playerData) }
+const houseRooms = new Map();
 
-// Mobilier dynamique de la pièce (Géré et modifiable par le Propriétaire)
-let roomFurniture = [
-  { id: 'f_leader_table', type: 'mayor_table', gx: 6, gy: 6, sizeX: 2, sizeY: 1, rotation: 0, interactive: 'work' }
-];
+// Récupère ou instancie une pièce de logement
+async function getOrInitHouseRoom(ownerId, fallbackUsername = 'Joueur') {
+  if (houseRooms.has(ownerId)) {
+    return houseRooms.get(ownerId);
+  }
 
-// Point de spawn initial par défaut
-const DEFAULT_SPAWN = { gx: 10, gy: 6 };
+  const houseData = await getOrCreateHouse(ownerId, fallbackUsername);
+  const room = {
+    ownerId: houseData.ownerId,
+    ownerUsername: houseData.ownerUsername || fallbackUsername,
+    roomName: houseData.roomName || `Résidence de ${fallbackUsername}`,
+    architecture: houseData.architecture,
+    furniture: houseData.furniture || [],
+    clients: new Map() // ws -> playerData
+  };
 
-function broadcast(data, excludeWs = null) {
+  houseRooms.set(ownerId, room);
+  return room;
+}
+
+function broadcastToHouse(houseOwnerId, data, excludeWs = null) {
+  const room = houseRooms.get(houseOwnerId);
+  if (!room) return;
+
   const payload = JSON.stringify(data);
-  for (const client of wss.clients) {
-    if (client.readyState === WebSocket.OPEN && client !== excludeWs) {
-      client.send(payload);
+  for (const clientWs of room.clients.keys()) {
+    if (clientWs.readyState === WebSocket.OPEN && clientWs !== excludeWs) {
+      clientWs.send(payload);
     }
   }
 }
 
 wss.on('connection', (ws) => {
   let authenticatedUser = null;
+  let currentHouseOwnerId = null;
 
-  ws.on('message', (messageRaw) => {
+  function leaveCurrentHouse() {
+    if (!currentHouseOwnerId) return;
+    const room = houseRooms.get(currentHouseOwnerId);
+    if (room && room.clients.has(ws)) {
+      const p = room.clients.get(ws);
+      room.clients.delete(ws);
+      console.log(`[Joueur Déconnecté] ${p.username} de la maison de ${room.ownerUsername}`);
+      broadcastToHouse(currentHouseOwnerId, {
+        type: 'player_left',
+        id: p.id
+      });
+
+      // Libérer la mémoire vive si la pièce est vide et n'est pas sauvegardée
+      if (room.clients.size === 0) {
+        // Laisser en cache ou conserver pour persistance rapide
+      }
+    }
+    currentHouseOwnerId = null;
+  }
+
+  ws.on('message', async (messageRaw) => {
     try {
       const msg = JSON.parse(messageRaw.toString());
 
+      // 1. Authentification & Connexion au Logement (par défaut son propre logement)
       if (msg.type === 'auth') {
-        const userId = db.sessions[msg.token];
-        const user = db.users.find(u => u.id === userId);
+        const userId = await getUserIdByToken(msg.token);
+        const user = userId ? await findUserById(userId) : null;
         if (!user) {
           ws.send(JSON.stringify({ type: 'auth_error', message: 'Session invalide' }));
           return;
         }
 
         authenticatedUser = user;
-
-        // Le premier joueur connecté devient propriétaire de l'appartement
-        if (!roomOwnerId || connectedPlayers.size === 0) {
-          roomOwnerId = user.id;
-        }
-
-        const isOwner = user.id === roomOwnerId;
-        const playerData = {
-          id: user.id,
-          username: user.username,
-          avatar: user.avatar,
-          isOwner,
-          gx: DEFAULT_SPAWN.gx + (Math.random() * 1.5 - 0.75),
-          gy: DEFAULT_SPAWN.gy + (Math.random() * 1.5 - 0.75),
-          targetGx: null,
-          targetGy: null,
-          direction: 'SE',
-          isMoving: false,
-          isSitting: false,
-          currentAction: 'idle'
-        };
-
-        connectedPlayers.set(ws, playerData);
-
-        // Envoyer la liste de tous les joueurs et l'état complet au nouveau joueur
-        const currentPlayersList = Array.from(connectedPlayers.values());
-        ws.send(JSON.stringify({
-          type: 'room_init',
-          selfId: user.id,
-          isOwner,
-          ownerId: roomOwnerId,
-          players: currentPlayersList,
-          furniture: roomFurniture,
-          roomName: 'Résidence Ouaga 2000'
-        }));
-
-        // Informer les autres joueurs de l'arrivée de ce joueur
-        broadcast({
-          type: 'player_joined',
-          player: playerData
-        }, ws);
-
-        console.log(`[Joueur Connecté] ${user.username} (${user.id}) - Propriétaire: ${isOwner}`);
+        const targetHouseOwnerId = msg.targetHouseId || user.id;
+        await joinHouse(targetHouseOwnerId);
       }
 
-      // Déplacement du joueur
+      // 2. Bascule / Visite d'un autre Logement
+      else if (msg.type === 'switch_house') {
+        if (!authenticatedUser) return;
+        const targetHouseOwnerId = msg.targetHouseId || authenticatedUser.id;
+        if (targetHouseOwnerId === currentHouseOwnerId) return;
+
+        leaveCurrentHouse();
+        await joinHouse(targetHouseOwnerId);
+      }
+
+      // 3. Mise à jour de l'Architecture (Murs, Sols, Fenêtres, Taille) - Réservé au Propriétaire
+      else if (msg.type === 'house_architecture_update') {
+        if (!authenticatedUser || !currentHouseOwnerId) return;
+        if (authenticatedUser.id !== currentHouseOwnerId) {
+          ws.send(JSON.stringify({ type: 'error', message: 'Seul le propriétaire peut modifier l\'architecture.' }));
+          return;
+        }
+
+        const room = houseRooms.get(currentHouseOwnerId);
+        if (!room) return;
+
+        room.architecture = { ...room.architecture, ...msg.architecture };
+        await saveHouseArchitecture(currentHouseOwnerId, room.architecture);
+
+        broadcastToHouse(currentHouseOwnerId, {
+          type: 'house_architecture_sync',
+          architecture: room.architecture
+        });
+
+        console.log(`[Architecture] Mise à jour de la résidence de ${room.ownerUsername}`);
+      }
+
+      // 4. Déplacement du Joueur dans le Logement
       else if (msg.type === 'move') {
-        const player = connectedPlayers.get(ws);
+        if (!currentHouseOwnerId) return;
+        const room = houseRooms.get(currentHouseOwnerId);
+        if (!room) return;
+
+        const player = room.clients.get(ws);
         if (!player) return;
 
-        player.targetGx = Math.max(0, Math.min(15, msg.targetGx));
-        player.targetGy = Math.max(0, Math.min(15, msg.targetGy));
+        const maxCoord = (room.architecture?.gridSize || 16) - 1;
+        player.targetGx = Math.max(0, Math.min(maxCoord, msg.targetGx));
+        player.targetGy = Math.max(0, Math.min(maxCoord, msg.targetGy));
         player.isMoving = true;
         player.isSitting = false;
         player.currentAction = 'walking';
         if (msg.direction) player.direction = msg.direction;
 
-        broadcast({
+        broadcastToHouse(currentHouseOwnerId, {
           type: 'player_move',
           id: player.id,
           targetGx: player.targetGx,
@@ -263,9 +319,13 @@ wss.on('connection', (ws) => {
         });
       }
 
-      // Synchronisation de position
+      // Synchronisation de Position
       else if (msg.type === 'position_sync') {
-        const player = connectedPlayers.get(ws);
+        if (!currentHouseOwnerId) return;
+        const room = houseRooms.get(currentHouseOwnerId);
+        if (!room) return;
+
+        const player = room.clients.get(ws);
         if (!player) return;
 
         player.gx = msg.gx;
@@ -273,7 +333,7 @@ wss.on('connection', (ws) => {
         player.isMoving = msg.isMoving;
         if (msg.direction) player.direction = msg.direction;
 
-        broadcast({
+        broadcastToHouse(currentHouseOwnerId, {
           type: 'player_position',
           id: player.id,
           gx: player.gx,
@@ -283,15 +343,19 @@ wss.on('connection', (ws) => {
         }, ws);
       }
 
-      // Message de chat dans la pièce
+      // Chat de la pièce
       else if (msg.type === 'chat') {
-        const player = connectedPlayers.get(ws);
+        if (!currentHouseOwnerId) return;
+        const room = houseRooms.get(currentHouseOwnerId);
+        if (!room) return;
+
+        const player = room.clients.get(ws);
         if (!player) return;
 
         const cleanText = (msg.text || '').trim().slice(0, 120);
         if (!cleanText) return;
 
-        broadcast({
+        broadcastToHouse(currentHouseOwnerId, {
           type: 'player_chat',
           id: player.id,
           username: player.username,
@@ -300,9 +364,13 @@ wss.on('connection', (ws) => {
         });
       }
 
-      // Action spécifique (s'asseoir, saluer, danser, etc.)
+      // Action spécifique (s'asseoir, etc.)
       else if (msg.type === 'action') {
-        const player = connectedPlayers.get(ws);
+        if (!currentHouseOwnerId) return;
+        const room = houseRooms.get(currentHouseOwnerId);
+        if (!room) return;
+
+        const player = room.clients.get(ws);
         if (!player) return;
 
         player.currentAction = msg.action;
@@ -313,7 +381,7 @@ wss.on('connection', (ws) => {
           player.isSitting = false;
         }
 
-        broadcast({
+        broadcastToHouse(currentHouseOwnerId, {
           type: 'player_action',
           id: player.id,
           action: msg.action,
@@ -321,102 +389,155 @@ wss.on('connection', (ws) => {
         });
       }
 
-      // Customisation du mobilier (Réservé au Propriétaire)
+      // --- Customisation du Mobilier (Réservé au Propriétaire du Logement) ---
       else if (msg.type === 'furniture_place') {
-        const player = connectedPlayers.get(ws);
-        if (!player || player.id !== roomOwnerId) return;
+        if (!authenticatedUser || !currentHouseOwnerId) return;
+        if (authenticatedUser.id !== currentHouseOwnerId) return;
+
+        const room = houseRooms.get(currentHouseOwnerId);
+        if (!room) return;
 
         const newItem = {
-          id: 'f_' + crypto.randomUUID().slice(0, 8),
+          id: msg.item.id || ('f_' + crypto.randomUUID().slice(0, 8)),
           type: msg.item.type,
           gx: Math.round(msg.item.gx),
           gy: Math.round(msg.item.gy),
           sizeX: msg.item.sizeX || 1,
           sizeY: msg.item.sizeY || 1,
           rotation: msg.item.rotation || 0,
-          interactive: msg.item.interactive || null,
-          isWalkable: !!msg.item.isWalkable
+          elevation: msg.item.elevation || 0,
+          surfaceParentId: msg.item.surfaceParentId || null,
+          isSurface: !!msg.item.isSurface,
+          surfaceHeight: msg.item.surfaceHeight || 0,
+          isTabletop: !!msg.item.isTabletop,
+          isWalkable: !!msg.item.isWalkable,
+          interactive: msg.item.interactive || null
         };
 
-        roomFurniture.push(newItem);
-        broadcast({ type: 'furniture_sync', furniture: roomFurniture });
+        room.furniture.push(newItem);
+        await saveHouseFurniture(currentHouseOwnerId, room.furniture);
+        broadcastToHouse(currentHouseOwnerId, { type: 'furniture_sync', furniture: room.furniture });
       }
 
       else if (msg.type === 'furniture_rotate') {
-        const player = connectedPlayers.get(ws);
-        if (!player || player.id !== roomOwnerId) return;
+        if (!authenticatedUser || !currentHouseOwnerId) return;
+        if (authenticatedUser.id !== currentHouseOwnerId) return;
 
-        const item = roomFurniture.find(f => f.id === msg.id);
+        const room = houseRooms.get(currentHouseOwnerId);
+        if (!room) return;
+
+        const item = room.furniture.find(f => f.id === msg.id);
         if (item) {
           item.rotation = ((item.rotation || 0) + 90) % 360;
-          broadcast({ type: 'furniture_sync', furniture: roomFurniture });
+          await saveHouseFurniture(currentHouseOwnerId, room.furniture);
+          broadcastToHouse(currentHouseOwnerId, { type: 'furniture_sync', furniture: room.furniture });
         }
       }
 
       else if (msg.type === 'furniture_move') {
-        const player = connectedPlayers.get(ws);
-        if (!player || player.id !== roomOwnerId) return;
+        if (!authenticatedUser || !currentHouseOwnerId) return;
+        if (authenticatedUser.id !== currentHouseOwnerId) return;
 
-        const item = roomFurniture.find(f => f.id === msg.id);
+        const room = houseRooms.get(currentHouseOwnerId);
+        if (!room) return;
+
+        const item = room.furniture.find(f => f.id === msg.id);
         if (item) {
           item.gx = Math.round(msg.gx);
           item.gy = Math.round(msg.gy);
-          broadcast({ type: 'furniture_sync', furniture: roomFurniture });
+          await saveHouseFurniture(currentHouseOwnerId, room.furniture);
+          broadcastToHouse(currentHouseOwnerId, { type: 'furniture_sync', furniture: room.furniture });
         }
       }
 
       else if (msg.type === 'furniture_remove') {
-        const player = connectedPlayers.get(ws);
-        if (!player || player.id !== roomOwnerId) return;
+        if (!authenticatedUser || !currentHouseOwnerId) return;
+        if (authenticatedUser.id !== currentHouseOwnerId) return;
 
-        roomFurniture = roomFurniture.filter(f => f.id !== msg.id);
-        broadcast({ type: 'furniture_sync', furniture: roomFurniture });
+        const room = houseRooms.get(currentHouseOwnerId);
+        if (!room) return;
+
+        // Supprimer aussi les objets qui étaient posés sur ce meuble
+        room.furniture = room.furniture.filter(f => f.id !== msg.id && f.surfaceParentId !== msg.id);
+        await saveHouseFurniture(currentHouseOwnerId, room.furniture);
+        broadcastToHouse(currentHouseOwnerId, { type: 'furniture_sync', furniture: room.furniture });
       }
 
-      // Réinitialisation des meubles (Supprimer tout)
       else if (msg.type === 'furniture_clear') {
-        const player = connectedPlayers.get(ws);
-        if (!player || player.id !== roomOwnerId) return;
+        if (!authenticatedUser || !currentHouseOwnerId) return;
+        if (authenticatedUser.id !== currentHouseOwnerId) return;
 
-        roomFurniture = [];
-        broadcast({ type: 'furniture_sync', furniture: roomFurniture });
+        const room = houseRooms.get(currentHouseOwnerId);
+        if (!room) return;
+
+        room.furniture = [];
+        await saveHouseFurniture(currentHouseOwnerId, room.furniture);
+        broadcastToHouse(currentHouseOwnerId, { type: 'furniture_sync', furniture: room.furniture });
       }
     } catch (e) {
       console.error('Erreur traitement message WebSocket:', e);
     }
   });
 
-  ws.on('close', () => {
-    const player = connectedPlayers.get(ws);
-    if (player) {
-      connectedPlayers.delete(ws);
-      console.log(`[Joueur Déconnecté] ${player.username}`);
-      broadcast({
-        type: 'player_left',
-        id: player.id
-      });
+  async function joinHouse(targetHouseOwnerId) {
+    const room = await getOrInitHouseRoom(targetHouseOwnerId, authenticatedUser.username);
+    currentHouseOwnerId = targetHouseOwnerId;
 
-      // Si le propriétaire quitte, céder la propriété au joueur restant
-      if (player.id === roomOwnerId) {
-        const remaining = Array.from(connectedPlayers.values());
-        if (remaining.length > 0) {
-          roomOwnerId = remaining[0].id;
-          remaining[0].isOwner = true;
-          broadcast({
-            type: 'owner_assigned',
-            ownerId: roomOwnerId,
-            username: remaining[0].username
-          });
-          console.log(`[Nouveau Propriétaire] ${remaining[0].username}`);
-        } else {
-          roomOwnerId = null;
-        }
-      }
-    }
+    const isOwner = authenticatedUser.id === room.ownerId;
+    const defaultCenter = Math.floor((room.architecture?.gridSize || 16) / 2);
+
+    const playerData = {
+      id: authenticatedUser.id,
+      username: authenticatedUser.username,
+      avatar: authenticatedUser.avatar,
+      isOwner,
+      gx: defaultCenter + (Math.random() * 1.5 - 0.75),
+      gy: defaultCenter + (Math.random() * 1.5 - 0.75),
+      targetGx: null,
+      targetGy: null,
+      direction: 'SE',
+      isMoving: false,
+      isSitting: false,
+      currentAction: 'idle'
+    };
+
+    room.clients.set(ws, playerData);
+
+    // Initialisation chez le client
+    const currentPlayersList = Array.from(room.clients.values());
+    ws.send(JSON.stringify({
+      type: 'room_init',
+      selfId: authenticatedUser.id,
+      isOwner,
+      ownerId: room.ownerId,
+      ownerUsername: room.ownerUsername,
+      roomName: room.roomName,
+      architecture: room.architecture,
+      furniture: room.furniture,
+      players: currentPlayersList
+    }));
+
+    // Informer les autres visiteurs de cette maison
+    broadcastToHouse(currentHouseOwnerId, {
+      type: 'player_joined',
+      player: playerData
+    }, ws);
+
+    console.log(`[Logement] ${authenticatedUser.username} a rejoint la résidence de ${room.ownerUsername} (Hôte: ${isOwner})`);
+  }
+
+  ws.on('close', () => {
+    leaveCurrentHouse();
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`[Your-Life] Serveur opérationnel sur http://localhost:${PORT}`);
-});
+// Démarrage initial et chargement des données
+async function startServer() {
+  await initDatabase();
 
+  server.listen(PORT, () => {
+    console.log(`[Your-Life] Serveur opérationnel sur http://localhost:${PORT}`);
+  });
+}
+
+startServer();

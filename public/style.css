@@ -1941,3 +1941,229 @@ html, body {
   cursor: pointer;
 }
 
+/* --- Styles Mode Architecture (Sims 4) & Explorateur de Logements --- */
+
+.mode-nav-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 10px 14px 6px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mode-tab-btn {
+  flex: 1;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mode-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+}
+
+.mode-tab-btn.active {
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.25), rgba(180, 83, 9, 0.35));
+  border-color: #d97706;
+  color: #fef3c7;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.2);
+}
+
+.subview-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.subview-section.hidden {
+  display: none !important;
+}
+
+/* Groupes de contrôles Architecture */
+.arch-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+.arch-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #cbd5e1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.arch-btn-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.arch-choice-btn {
+  padding: 8px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 6px;
+  color: #94a3b8;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.18s ease;
+}
+
+.arch-choice-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
+}
+
+.arch-choice-btn.active {
+  background: rgba(217, 119, 6, 0.2);
+  border-color: #d97706;
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+.arch-color-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.arch-palette-pill {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: transform 0.18s, border-color 0.18s;
+}
+
+.arch-palette-pill:hover {
+  transform: scale(1.15);
+}
+
+.arch-palette-pill.active {
+  border-color: #facc15;
+  box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.4);
+  transform: scale(1.1);
+}
+
+/* Modale Explorateur de Logements */
+.housing-explorer-card {
+  max-width: 620px;
+  width: 90%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.housing-self-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.15), rgba(15, 23, 42, 0.6));
+  border: 1px solid rgba(217, 119, 6, 0.4);
+  padding: 14px 18px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.housing-self-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.housing-self-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fef3c7;
+}
+
+.housing-self-desc {
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.housing-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.housing-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.housing-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.housing-card:hover {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(217, 119, 6, 0.5);
+}
+
+.housing-card-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.housing-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.housing-card-meta {
+  font-size: 11px;
+  color: #94a3b8;
+  display: flex;
+  gap: 12px;
+}
+
+.housing-card-tag {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.housing-loading, .housing-empty {
+  font-size: 13px;
+  color: #94a3b8;
+  text-align: center;
+  padding: 24px;
+}
+
+

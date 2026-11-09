@@ -1,4 +1,4 @@
-// --- Point d'Entrée Principal Your-Life (Customisation, Multijoueur & Besoins) ---
+// --- Point d'Entrée Principal Your-Life (Customisation, Multijoueur & Architecture) ---
 
 import { IsometricEngine } from './engine.js';
 import { NetworkClient } from './network.js';
@@ -20,30 +20,31 @@ class YourLifeApp {
         this.ui.showToast('Connexion perdue. Tentative de reconnexion...', 4000);
       },
       onRoomInit: (data) => {
-        this.engine.setPlayers(data.players);
+        if (data.architecture) {
+          this.engine.buildRoom(data.architecture);
+          this.ui.setArchitecture(data.architecture);
+        }
+        this.engine.setPlayers(data.players || []);
         this.engine.setLocalPlayerId(data.selfId);
         this.engine.setIsOwner(data.isOwner);
-        this.engine.setFurniture(data.furniture);
+        this.engine.setFurniture(data.furniture || []);
 
-        this.ui.setOwnerStatus(data.isOwner);
+        this.ui.setOwnerStatus(data.isOwner, data.roomName);
         this.ui.showToast(data.isOwner
-          ? 'Vous êtes le premier connecté : Propriétaire de l\'appartement !'
-          : `Bienvenue dans la ${data.roomName} !`, 4000);
+          ? 'Bienvenue dans votre logement personnel !'
+          : `Bienvenue dans la ${data.roomName || 'résidence'} !`, 3500);
+      },
+      onHouseArchitectureSync: (architecture) => {
+        this.engine.buildRoom(architecture);
+        this.ui.setArchitecture(architecture);
+        this.ui.showToast("L'architecture de la pièce a été modifiée !", 2000);
       },
       onPlayerJoined: (player) => {
         this.engine.addOrUpdatePlayer(player);
-        this.ui.showToast(`${player.username} a rejoint l'appartement.`, 2500);
+        this.ui.showToast(`${player.username} est entré dans le logement.`, 2500);
       },
       onPlayerLeft: (id) => {
         this.engine.removePlayer(id);
-      },
-      onOwnerAssigned: (ownerId, username) => {
-        const isOwner = ownerId === this.network.currentUser?.id;
-        this.engine.setIsOwner(isOwner);
-        this.ui.setOwnerStatus(isOwner);
-        this.ui.showToast(isOwner
-          ? 'Vous êtes maintenant le propriétaire de la résidence !'
-          : `${username} est le nouveau propriétaire de la salle.`, 4000);
       },
       onFurnitureSync: (furniture) => {
         this.engine.setFurniture(furniture);
@@ -81,9 +82,11 @@ class YourLifeApp {
     this.engine = new IsometricEngine(this.canvas, {
       onFloorClick: (clickData) => this.handleFloorClick(clickData),
       onPlayerMoveStep: (moveData) => this.handlePlayerMoveStep(moveData),
+      onToast: (msg, dur) => this.ui.showToast(msg, dur),
       onPlaceFurniture: (item) => {
         this.network.sendFurniturePlace(item);
-        this.ui.showToast(`Meuble posé : ${item.type}`, 2000);
+        const stackMention = item.elevation > 0 ? ' (posé sur table)' : '';
+        this.ui.showToast(`Objet posé : ${item.type}${stackMention}`, 2000);
       },
       onSelectFurniture: (item) => {
         this.ui.showFurnitureSelection(item);
@@ -135,7 +138,7 @@ class YourLifeApp {
       },
       onToggleView: () => {
         const mode = this.engine.toggleViewMode();
-        this.ui.showToast(mode === 'architectural' ? 'Mode Architecture Sims activé' : 'Mode Décor Photo activé', 2000);
+        this.ui.showToast(mode === 'architectural' ? 'Vue Architecture Sims active' : 'Vue Photo active', 2000);
         return mode;
       },
       onRotateSelectedFurniture: () => {
@@ -161,8 +164,18 @@ class YourLifeApp {
         this.ui.hideFurnitureSelection();
         this.ui.showToast('Tous les meubles ont été retirés', 2500);
       },
+      onArchitectureChange: (archChanges) => {
+        this.network.sendHouseArchitectureUpdate(archChanges);
+      },
+      onFetchHouses: async () => {
+        return await this.network.fetchPublicHouses();
+      },
+      onSwitchHouse: (targetOwnerId) => {
+        this.network.sendSwitchHouse(targetOwnerId);
+        this.ui.showToast(targetOwnerId ? 'Téléportation chez votre voisin...' : 'Retour à votre logement...', 2000);
+      },
       onZoom: (factor) => {
-        this.engine.userZoom = Math.min(2.5, Math.max(0.65, this.engine.userZoom * factor));
+        this.engine.userZoom = Math.min(2.5, Math.max(0.45, this.engine.userZoom * factor));
         this.engine.resize();
       },
       onRecenter: () => {
@@ -188,7 +201,7 @@ class YourLifeApp {
         } else if (action === 'dance') {
           this.network.sendAction('dance');
           this.ui.replenishNeed('energy', 10);
-          this.network.sendChat('*danse au rythme du Coupé-Décalé et Warba*');
+          this.network.sendChat('*danse au rythme du Warba et Coupé-Décalé*');
         }
       }
     });

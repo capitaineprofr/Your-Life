@@ -65,8 +65,8 @@
         <button id="btn-zoom-in" class="btn-tool-icon" title="Zoom avant (+)">+</button>
         <button id="btn-zoom-out" class="btn-tool-icon" title="Zoom arrière (-)">-</button>
         <button id="btn-recenter" class="btn-tool-icon" title="Recentrer la caméra">Recentrer</button>
-        <button id="btn-open-map" class="btn-tool-icon btn-open-map" title="Ouvrir la Carte Urbaine de Ouagadougou 3D (Touche M)">Carte de Ouaga [M]</button>
-        <button id="btn-toggle-view" class="btn-tool-icon btn-mode-view" title="Basculer entre Vue Architecture Sims et Décor Photo">Vue Sims Architecture</button>
+        <button id="btn-open-housing-modal" class="btn-tool-icon btn-mode-view" title="Changer de logement ou visiter des voisins (Touche L)">Logements [L]</button>
+        <button id="btn-open-map" class="btn-tool-icon btn-open-map" title="Ouvrir la Carte Urbaine de Ouagadougou 3D (Touche M)">Carte Ouaga [M]</button>
         <button id="btn-toggle-ui" class="btn-tool-icon btn-hide-ui" title="Masquer l'interface (Touche H)">Masquer UI [H]</button>
       </div>
 
@@ -89,54 +89,125 @@
         </form>
       </div>
 
-      <!-- 4. Sur la droite : Panneau de Customisation & Mobilier -->
+      <!-- 4. Sur la droite : Panneau de Customisation & Mobilier & Architecture -->
       <div id="hud-custom-sidebar" class="floating-widget widget-right-custom">
         <!-- Onglet de réouverture sur le bord droit -->
-        <button class="panel-edge-tab" id="tab-toggle-custom" title="Ouvrir Customisation Mobilier">
+        <button class="panel-edge-tab" id="tab-toggle-custom" title="Ouvrir Customisation">
           <span class="tab-arrow">‹</span>
-          <span class="tab-text">Mobilier</span>
+          <span class="tab-text">Aménagement</span>
         </button>
 
         <div class="sidebar-header">
-          <span class="sidebar-title">Customisation Mobilier</span>
+          <span class="sidebar-title" id="sidebar-main-title">Aménagement Logement</span>
           <button id="btn-toggle-custom-size" class="btn-sidebar-toggle" title="Réduire vers la droite">›</button>
         </div>
 
-        <div id="custom-owner-content" class="custom-content">
-          <!-- Onglets de Catégorie -->
-          <div class="catalog-tabs">
-            <button class="cat-btn active" data-cat="all">Tous</button>
-            <button class="cat-btn" data-cat="salon">Salon</button>
-            <button class="cat-btn" data-cat="chambre">Lit</button>
-            <button class="cat-btn" data-cat="cuisine">Cuisine</button>
-            <button class="cat-btn" data-cat="bureau">Bureau</button>
-          </div>
+        <!-- Onglets principaux : Mobilier vs Mode Architecture (Sims) -->
+        <div class="mode-nav-tabs">
+          <button id="tab-mode-furniture" class="mode-tab-btn active" data-submode="furniture">Mobilier & Déco</button>
+          <button id="tab-mode-architecture" class="mode-tab-btn" data-submode="architecture">Architecture (Sims)</button>
+        </div>
 
-          <!-- Outils de sélection quand un meuble est sélectionné -->
-          <div id="furniture-selection-bar" class="furniture-selection-bar hidden">
-            <span id="selected-item-name" class="selected-name">Meuble sélectionné</span>
-            <div class="selection-actions">
-              <button id="btn-rotate-furniture" class="btn-action-rotate" title="Pivoter de 90° (Touche R)">Pivoter (R)</button>
-              <button id="btn-delete-furniture" class="btn-action-del">Supprimer</button>
-              <button id="btn-deselect-furniture" class="btn-action-cancel">Fermer</button>
+        <div id="custom-owner-content" class="custom-content">
+          <!-- SECTION A : MOBILIER -->
+          <div id="subview-furniture" class="subview-section">
+            <div class="catalog-tabs">
+              <button class="cat-btn active" data-cat="all">Tous</button>
+              <button class="cat-btn" data-cat="salon">Salon</button>
+              <button class="cat-btn" data-cat="chambre">Chambre</button>
+              <button class="cat-btn" data-cat="bureau">Bureau</button>
+              <button class="cat-btn" data-cat="deco">Objets & Tasses</button>
+            </div>
+
+            <!-- Outils de sélection quand un meuble est sélectionné -->
+            <div id="furniture-selection-bar" class="furniture-selection-bar hidden">
+              <span id="selected-item-name" class="selected-name">Meuble sélectionné</span>
+              <div class="selection-actions">
+                <button id="btn-rotate-furniture" class="btn-action-rotate" title="Pivoter de 90° (Touche R)">Pivoter (R)</button>
+                <button id="btn-delete-furniture" class="btn-action-del">Supprimer</button>
+                <button id="btn-deselect-furniture" class="btn-action-cancel">Fermer</button>
+              </div>
+            </div>
+
+            <!-- Grille du catalogue d'objets -->
+            <div id="catalog-grid" class="catalog-grid"></div>
+
+            <div class="custom-actions-row">
+              <button id="btn-import-geo" class="btn-import-geo" title="Importer une géométrie Minecraft Bedrock JSON">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                <span>+ Geo Blockbench</span>
+              </button>
+              <button id="btn-clear-room" class="btn-clear-room">Vider la salle</button>
             </div>
           </div>
 
-          <!-- Grille du catalogue d'objets -->
-          <div id="catalog-grid" class="catalog-grid"></div>
+          <!-- SECTION B : MODE ARCHITECTURE SIMS -->
+          <div id="subview-architecture" class="subview-section hidden">
+            <!-- 1. Dimensions / Taille de la Pièce -->
+            <div class="arch-group">
+              <label class="arch-label">Taille du Logement (Grille)</label>
+              <div class="arch-btn-grid" id="arch-grid-sizes">
+                <button type="button" class="arch-choice-btn" data-field="gridSize" data-val="12">Studio (12x12)</button>
+                <button type="button" class="arch-choice-btn" data-field="gridSize" data-val="14">Appart (14x14)</button>
+                <button type="button" class="arch-choice-btn active" data-field="gridSize" data-val="16">Standard (16x16)</button>
+                <button type="button" class="arch-choice-btn" data-field="gridSize" data-val="18">Villa (18x18)</button>
+                <button type="button" class="arch-choice-btn" data-field="gridSize" data-val="20">Grand Palais (20x20)</button>
+              </div>
+            </div>
 
-          <div class="custom-actions-row">
-            <button id="btn-import-geo" class="btn-import-geo" title="Importer une géométrie Minecraft Bedrock JSON">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-              <span>+ Geo Minecraft (.json)</span>
-            </button>
-            <button id="btn-clear-room" class="btn-clear-room">Vider la salle</button>
+            <!-- 2. Couleur & Style des Murs -->
+            <div class="arch-group">
+              <label class="arch-label">Couleur & Finition des Murs</label>
+              <div class="arch-color-palette" id="arch-wall-colors">
+                <button type="button" class="arch-palette-pill active" data-field="wallColor" data-val="plaster_ochre" style="background:#f3eee3;" title="Plâtre Ocre Doux Ouaga"></button>
+                <button type="button" class="arch-palette-pill" data-field="wallColor" data-val="brick_adobe" style="background:#b45309;" title="Brique de Terre Crue Adobe"></button>
+                <button type="button" class="arch-palette-pill" data-field="wallColor" data-val="modern_white" style="background:#f8fafc;" title="Blanc Épuré Moderne"></button>
+                <button type="button" class="arch-palette-pill" data-field="wallColor" data-val="indigo_sahara" style="background:#1e3a8a;" title="Bleu Indigo Saharien"></button>
+                <button type="button" class="arch-palette-pill" data-field="wallColor" data-val="green_faso" style="background:#15803d;" title="Vert Faso Dan Fani"></button>
+                <button type="button" class="arch-palette-pill" data-field="wallColor" data-val="wood_boiserie" style="background:#78350f;" title="Boiserie Noble"></button>
+              </div>
+            </div>
+
+            <!-- 3. Revêtement de Sol -->
+            <div class="arch-group">
+              <label class="arch-label">Revêtement de Sol</label>
+              <div class="arch-btn-grid" id="arch-floor-types">
+                <button type="button" class="arch-choice-btn active" data-field="floorType" data-val="acacia_parquet">Parquet Acacia</button>
+                <button type="button" class="arch-choice-btn" data-field="floorType" data-val="white_tile">Carrelage Blanc</button>
+                <button type="button" class="arch-choice-btn" data-field="floorType" data-val="marble">Marbre Crème</button>
+                <button type="button" class="arch-choice-btn" data-field="floorType" data-val="terracotta">Terre Cuite</button>
+                <button type="button" class="arch-choice-btn" data-field="floorType" data-val="carpet_soft">Moquette Douce</button>
+              </div>
+            </div>
+
+            <!-- 4. Style de Fenêtres & Baies -->
+            <div class="arch-group">
+              <label class="arch-label">Style de Fenêtres</label>
+              <div class="arch-btn-grid" id="arch-window-types">
+                <button type="button" class="arch-choice-btn active" data-field="windowType" data-val="large_bay">Grande Baie Vitrée</button>
+                <button type="button" class="arch-choice-btn" data-field="windowType" data-val="wooden_louver">Persiennes Bois</button>
+                <button type="button" class="arch-choice-btn" data-field="windowType" data-val="double_modern">Doubles Fenêtres</button>
+                <button type="button" class="arch-choice-btn" data-field="windowType" data-val="none">Mur Plein</button>
+              </div>
+            </div>
+
+            <!-- 5. Tapis de Sol -->
+            <div class="arch-group">
+              <label class="arch-label">Tapis Traditionnel ou Moderne</label>
+              <div class="arch-btn-grid" id="arch-rug-types">
+                <button type="button" class="arch-choice-btn active" data-field="rugType" data-val="sahelian_red">Rouge Sahélien</button>
+                <button type="button" class="arch-choice-btn" data-field="rugType" data-val="faso_dan_fani">Faso Dan Fani</button>
+                <button type="button" class="arch-choice-btn" data-field="rugType" data-val="berbere">Berbère Losanges</button>
+                <button type="button" class="arch-choice-btn" data-field="rugType" data-val="none">Sans Tapis</button>
+              </div>
+            </div>
           </div>
         </div>
 
         <div id="custom-visitor-notice" class="visitor-notice hidden">
           <p>Mode Visiteur</p>
-          <span>Seul le premier connecté (Propriétaire) peut aménager et déplacer le mobilier de la résidence.</span>
+          <span>Vous visitez ce logement. Seul le propriétaire peut aménager le mobilier et modifier l'architecture.</span>
+          <button id="btn-return-my-home-notice" class="btn-primary" style="margin-top:10px; width:100%;">Rentrer chez moi</button>
         </div>
       </div>
 
@@ -419,6 +490,34 @@
           <div id="reg-error" class="form-error hidden"></div>
           <button type="submit" id="btn-submit-register" class="btn-submit">Créer mon personnage & Jouer</button>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. Modale Explorateur de Logements & Quartier -->
+  <div id="modal-housing-explorer" class="modal-overlay hidden">
+    <div class="modal-card housing-explorer-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Logements & Résidences de Ouagadougou</h3>
+        <button id="btn-close-housing-modal" class="btn-modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="housing-self-action">
+          <div class="housing-self-info">
+            <span class="housing-self-label">Votre Foyer Personnel</span>
+            <span class="housing-self-desc">Revenez instantanément dans votre propre logement privé pour l'aménager.</span>
+          </div>
+          <button id="btn-go-my-home" class="btn-primary">Rentrer chez moi</button>
+        </div>
+
+        <div class="housing-list-header">
+          <span>Résidences des Voisins & Amis</span>
+          <button id="btn-refresh-houses" class="btn-tool-icon" title="Rafraîchir">↻</button>
+        </div>
+
+        <div id="housing-cards-container" class="housing-cards-grid">
+          <div class="housing-loading">Chargement des résidences...</div>
+        </div>
       </div>
     </div>
   </div>

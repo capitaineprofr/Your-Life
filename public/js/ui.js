@@ -58,6 +58,22 @@ export class UIManager {
     this.btnDeselectFurniture = document.getElementById('btn-deselect-furniture');
     this.btnClearRoom = document.getElementById('btn-clear-room');
 
+    // Onglets Mobilier vs Architecture Sims
+    this.tabModeFurniture = document.getElementById('tab-mode-furniture');
+    this.tabModeArchitecture = document.getElementById('tab-mode-architecture');
+    this.subviewFurniture = document.getElementById('subview-furniture');
+    this.subviewArchitecture = document.getElementById('subview-architecture');
+    this.sidebarMainTitle = document.getElementById('sidebar-main-title');
+
+    // 4. Modale Explorateur de Logements
+    this.btnOpenHousingModal = document.getElementById('btn-open-housing-modal');
+    this.modalHousingExplorer = document.getElementById('modal-housing-explorer');
+    this.btnCloseHousingModal = document.getElementById('btn-close-housing-modal');
+    this.btnGoMyHome = document.getElementById('btn-go-my-home');
+    this.btnRefreshHouses = document.getElementById('btn-refresh-houses');
+    this.housingCardsContainer = document.getElementById('housing-cards-container');
+    this.btnReturnMyHomeNotice = document.getElementById('btn-return-my-home-notice');
+
     // 4. Widget Besoins Vitaux & Réduction
     this.needsWidget = document.getElementById('hud-needs-widget');
     this.btnToggleNeedsSize = document.getElementById('btn-toggle-needs-size');
@@ -161,9 +177,12 @@ export class UIManager {
       const isInput = ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
       if ((e.key === 'h' || e.key === 'H') && !isInput) {
         this.toggleAllUI();
+      } else if ((e.key === 'l' || e.key === 'L') && !isInput) {
+        this.toggleHousingModal();
       } else if (e.key === 'Escape') {
         if (isInput) document.activeElement.blur();
         if (this.handlers.onCancelPlacing) this.handlers.onCancelPlacing();
+        this.closeHousingModal();
       }
     });
 
@@ -264,6 +283,66 @@ export class UIManager {
         if (confirm('Êtes-vous sûr de vouloir vider tous les meubles de la pièce ?')) {
           if (this.handlers.onClearRoom) this.handlers.onClearRoom();
         }
+      });
+    }
+
+    // Bascule des Sous-Modes : Mobilier vs Architecture
+    if (this.tabModeFurniture) {
+      this.tabModeFurniture.addEventListener('click', () => {
+        this.tabModeFurniture.classList.add('active');
+        this.tabModeArchitecture.classList.remove('active');
+        if (this.subviewFurniture) this.subviewFurniture.classList.remove('hidden');
+        if (this.subviewArchitecture) this.subviewArchitecture.classList.add('hidden');
+      });
+    }
+    if (this.tabModeArchitecture) {
+      this.tabModeArchitecture.addEventListener('click', () => {
+        this.tabModeArchitecture.classList.add('active');
+        this.tabModeFurniture.classList.remove('active');
+        if (this.subviewArchitecture) this.subviewArchitecture.classList.remove('hidden');
+        if (this.subviewFurniture) this.subviewFurniture.classList.add('hidden');
+      });
+    }
+
+    // Écouteurs de choix pour le Mode Architecture Sims
+    const archButtons = document.querySelectorAll('.arch-choice-btn, .arch-palette-pill');
+    archButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const field = btn.dataset.field;
+        let val = btn.dataset.val;
+        if (field === 'gridSize') val = parseInt(val, 10);
+
+        const parent = btn.parentElement;
+        if (parent) {
+          parent.querySelectorAll(`[data-field="${field}"]`).forEach(b => b.classList.remove('active'));
+        }
+        btn.classList.add('active');
+
+        if (this.handlers.onArchitectureChange) {
+          this.handlers.onArchitectureChange({ [field]: val });
+        }
+      });
+    });
+
+    // Modale Explorateur de Logements
+    if (this.btnOpenHousingModal) {
+      this.btnOpenHousingModal.addEventListener('click', () => this.openHousingModal());
+    }
+    if (this.btnCloseHousingModal) {
+      this.btnCloseHousingModal.addEventListener('click', () => this.closeHousingModal());
+    }
+    if (this.btnRefreshHouses) {
+      this.btnRefreshHouses.addEventListener('click', () => this.loadHousingList());
+    }
+    if (this.btnGoMyHome) {
+      this.btnGoMyHome.addEventListener('click', () => {
+        this.closeHousingModal();
+        if (this.handlers.onSwitchHouse) this.handlers.onSwitchHouse(null);
+      });
+    }
+    if (this.btnReturnMyHomeNotice) {
+      this.btnReturnMyHomeNotice.addEventListener('click', () => {
+        if (this.handlers.onSwitchHouse) this.handlers.onSwitchHouse(null);
       });
     }
 
@@ -398,10 +477,14 @@ export class UIManager {
     }
   }
 
-  setOwnerStatus(isOwner) {
+  setOwnerStatus(isOwner, roomName = null) {
     if (this.hudRoleBadge) {
       this.hudRoleBadge.textContent = isOwner ? 'HÔTE' : 'VISITEUR';
       this.hudRoleBadge.style.color = isOwner ? '#facc15' : '#94a3b8';
+    }
+
+    if (this.sidebarMainTitle && roomName) {
+      this.sidebarMainTitle.textContent = roomName;
     }
 
     if (this.customOwnerContent && this.customVisitorNotice) {
@@ -412,6 +495,96 @@ export class UIManager {
         this.customOwnerContent.classList.add('hidden');
         this.customVisitorNotice.classList.remove('hidden');
       }
+    }
+  }
+
+  setArchitecture(arch = {}) {
+    for (const [key, val] of Object.entries(arch)) {
+      const btn = document.querySelector(`[data-field="${key}"][data-val="${val}"]`);
+      if (btn) {
+        const parent = btn.parentElement;
+        if (parent) {
+          parent.querySelectorAll(`[data-field="${key}"]`).forEach(b => b.classList.remove('active'));
+        }
+        btn.classList.add('active');
+      }
+    }
+  }
+
+  openHousingModal() {
+    if (this.modalHousingExplorer) {
+      this.modalHousingExplorer.classList.remove('hidden');
+      this.loadHousingList();
+    }
+  }
+
+  closeHousingModal() {
+    if (this.modalHousingExplorer) {
+      this.modalHousingExplorer.classList.add('hidden');
+    }
+  }
+
+  toggleHousingModal() {
+    if (this.modalHousingExplorer) {
+      if (this.modalHousingExplorer.classList.contains('hidden')) {
+        this.openHousingModal();
+      } else {
+        this.closeHousingModal();
+      }
+    }
+  }
+
+  async loadHousingList() {
+    if (!this.housingCardsContainer) return;
+    this.housingCardsContainer.innerHTML = '<div class="housing-loading">Recherche des résidences...</div>';
+
+    if (this.handlers.onFetchHouses) {
+      try {
+        const houses = await this.handlers.onFetchHouses();
+        this.renderHousingList(houses);
+      } catch (err) {
+        this.housingCardsContainer.innerHTML = '<div class="housing-empty">Erreur de chargement.</div>';
+      }
+    }
+  }
+
+  renderHousingList(houses = []) {
+    if (!this.housingCardsContainer) return;
+    this.housingCardsContainer.innerHTML = '';
+
+    if (houses.length === 0) {
+      this.housingCardsContainer.innerHTML = '<div class="housing-empty">Aucune autre résidence trouvée pour l\'instant.</div>';
+      return;
+    }
+
+    for (const house of houses) {
+      const card = document.createElement('div');
+      card.className = 'housing-card';
+      const isSelf = !!house.isSelf;
+      const sizeText = house.architecture?.gridSize ? `${house.architecture.gridSize}x${house.architecture.gridSize}` : '16x16';
+
+      card.innerHTML = `
+        <div class="housing-card-left">
+          <span class="housing-card-title">${escapeHtml(house.roomName || 'Résidence')}</span>
+          <div class="housing-card-meta">
+            <span>Propriétaire : <strong>${escapeHtml(house.ownerUsername || 'Joueur')}</strong></span>
+            <span>Taille : ${sizeText}</span>
+            <span class="housing-card-tag">${house.onlineVisitors || 0} visiteur(s)</span>
+          </div>
+        </div>
+        <button class="btn-primary btn-visit-house" data-id="${house.ownerId}">
+          ${isSelf ? 'Chez vous' : 'Visiter'}
+        </button>
+      `;
+
+      card.querySelector('.btn-visit-house').addEventListener('click', () => {
+        this.closeHousingModal();
+        if (this.handlers.onSwitchHouse) {
+          this.handlers.onSwitchHouse(isSelf ? null : house.ownerId);
+        }
+      });
+
+      this.housingCardsContainer.appendChild(card);
     }
   }
 

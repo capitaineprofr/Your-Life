@@ -1,4 +1,4 @@
-// --- Client Réseau (API REST & WebSockets Multijoueur) ---
+// --- Client Réseau (API REST & WebSockets Multijoueur Multi-Instances) ---
 
 export class NetworkClient {
   constructor(callbacks = {}) {
@@ -59,6 +59,20 @@ export class NetworkClient {
     }
   }
 
+  async fetchPublicHouses() {
+    if (!this.token) return [];
+    try {
+      const res = await fetch('/api/houses', {
+        headers: { 'Authorization': `Bearer ${this.token}` }
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.houses || [];
+    } catch {
+      return [];
+    }
+  }
+
   async workPC() {
     if (!this.token) return null;
     const res = await fetch('/api/work', {
@@ -92,7 +106,7 @@ export class NetworkClient {
 
     this.ws.onopen = () => {
       this.isConnected = true;
-      // Authentification auprès du serveur WebSocket
+      // Authentification auprès du serveur WebSocket (rejoint son propre logement par défaut)
       this.send({ type: 'auth', token: this.token });
       if (this.callbacks.onConnected) this.callbacks.onConnected();
     };
@@ -121,6 +135,9 @@ export class NetworkClient {
       case 'room_init':
         if (this.callbacks.onRoomInit) this.callbacks.onRoomInit(msg);
         break;
+      case 'house_architecture_sync':
+        if (this.callbacks.onHouseArchitectureSync) this.callbacks.onHouseArchitectureSync(msg.architecture);
+        break;
       case 'player_joined':
         if (this.callbacks.onPlayerJoined) this.callbacks.onPlayerJoined(msg.player);
         break;
@@ -142,9 +159,6 @@ export class NetworkClient {
       case 'furniture_sync':
         if (this.callbacks.onFurnitureSync) this.callbacks.onFurnitureSync(msg.furniture);
         break;
-      case 'owner_assigned':
-        if (this.callbacks.onOwnerAssigned) this.callbacks.onOwnerAssigned(msg.ownerId, msg.username);
-        break;
       case 'auth_error':
         this.logout();
         if (this.callbacks.onAuthError) this.callbacks.onAuthError(msg.message);
@@ -156,6 +170,14 @@ export class NetworkClient {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));
     }
+  }
+
+  sendSwitchHouse(targetHouseId) {
+    this.send({ type: 'switch_house', targetHouseId });
+  }
+
+  sendHouseArchitectureUpdate(architecture) {
+    this.send({ type: 'house_architecture_update', architecture });
   }
 
   sendMove(targetGx, targetGy, direction) {
